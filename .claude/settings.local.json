@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-expo-app@latest michelin-quest --template blank-typescript)",
+      "Bash(npx expo *)"
+    ]
+  }
+}
