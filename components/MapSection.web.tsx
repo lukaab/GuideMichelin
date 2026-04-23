@@ -13,6 +13,7 @@ const CATEGORY_EMOJI: Record<string, string> = {
 interface Props {
   restaurants: Restaurant[];
   onSelectRestaurant: (r: Restaurant) => void;
+  onPreviewVisibilityChange?: (visible: boolean) => void;
 }
 
 export default function MapSection({ restaurants, onSelectRestaurant }: Props) {
