@@ -12,6 +12,8 @@ module.exports = {
     'prettier/prettier': 'warn',
     '@typescript-eslint/no-unused-vars': 'warn',
     '@typescript-eslint/no-explicit-any': 'warn',
+    '@typescript-eslint/no-require-imports': 'off',
+    'no-empty': ['error', { allowEmptyCatch: true }],
     'react/react-in-jsx-scope': 'off',
   },
   settings: {

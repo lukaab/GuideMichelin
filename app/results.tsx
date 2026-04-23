@@ -13,7 +13,7 @@ import {
 import MapSection from '../components/MapSection';
 import MichelinLogo from '../components/MichelinLogo';
 import RestaurantCardLarge from '../components/RestaurantCardLarge';
-import { applyFilters, filterStore } from '../lib/domain/filters';
+import { applyFilters, filterStore, haversineKm } from '../lib/domain/filters';
 import { getRestaurants } from '../lib/restaurants';
 import { Restaurant } from '../types';
 
@@ -21,10 +21,12 @@ const all = getRestaurants();
 
 export default function ResultsScreen() {
   const router = useRouter();
-  const { location, when, covers } = useLocalSearchParams<{
+  const { location, when, covers, lat, lng } = useLocalSearchParams<{
     location: string;
     when: string;
     covers: string;
+    lat: string;
+    lng: string;
   }>();
   const [favorites, setFavorites] = useState<number[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
@@ -33,13 +35,23 @@ export default function ResultsScreen() {
   const [activeFilters, setActiveFilters] = useState<string[]>(() => [...filterStore.active]);
   const sheetAnim = useRef(new Animated.Value(1)).current;
 
+  useEffect(() => {
+    filterStore.load().then(() => setActiveFilters([...filterStore.active]));
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       setActiveFilters([...filterStore.active]);
     }, []),
   );
 
-  const filtered = applyFilters(all, location ?? '', activeFilters);
+  const parsedLat = Number(lat);
+  const parsedLng = Number(lng);
+  const userCoords =
+    lat && lng && isFinite(parsedLat) && isFinite(parsedLng)
+      ? { lat: parsedLat, lng: parsedLng }
+      : undefined;
+  const filtered = applyFilters(all, location ?? '', activeFilters, userCoords);
 
   function toggleFav(id: number) {
     setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
@@ -115,6 +127,7 @@ export default function ResultsScreen() {
       <View style={[styles.mapWrap, isPreviewOpen && styles.mapWrapExpanded]}>
         <MapSection
           restaurants={filtered}
+          userCoords={userCoords}
           onSelectRestaurant={setSelectedRestaurant}
           onPreviewVisibilityChange={(visible) => {
             setIsPreviewOpen(visible);
@@ -142,17 +155,17 @@ export default function ResultsScreen() {
             },
           ]}
         >
+          <View style={styles.sheetHandle} />
+          <Text style={styles.resultsCount}>
+            {selectedRestaurant
+              ? `À la une : ${selectedRestaurant.name}`
+              : `${filtered.length} Résultat${filtered.length > 1 ? 's' : ''}`}
+          </Text>
           <ScrollView
             style={styles.sheet}
             contentContainerStyle={styles.sheetContent}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.sheetHandle} />
-            <Text style={styles.resultsCount}>
-              {selectedRestaurant
-                ? `À la une : ${selectedRestaurant.name}`
-                : `${filtered.length} Résultat${filtered.length > 1 ? 's' : ''}`}
-            </Text>
             {filtered.map((restaurant) => (
               <RestaurantCardLarge
                 key={restaurant.id}
@@ -160,6 +173,7 @@ export default function ResultsScreen() {
                 onPress={() => openRestaurant(restaurant)}
                 favorited={favorites.includes(restaurant.id)}
                 onFavorite={() => toggleFav(restaurant.id)}
+                distanceKm={location === 'Près de moi' && userCoords ? haversineKm(userCoords.lat, userCoords.lng, restaurant.lat, restaurant.lng) : undefined}
               />
             ))}
             {filtered.length === 0 && (
@@ -244,10 +258,10 @@ const styles = StyleSheet.create({
   },
   sheetWrap: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
   },
   sheet: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   sheetContent: {
     paddingHorizontal: 16,
@@ -267,7 +281,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#1A1A1A',
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
+    paddingHorizontal: 16,
   },
   emptyState: {
     alignItems: 'center',

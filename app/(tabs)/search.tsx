@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -55,6 +56,7 @@ export default function SearchScreen() {
     return new Date(d.getFullYear(), d.getMonth(), 1);
   });
 
+  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
   const totalCovers = adults + children;
 
   function selectLocation(title: string) {
@@ -63,8 +65,27 @@ export default function SearchScreen() {
     setStep('quand');
   }
 
+  async function handleNearMe() {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      setUserCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      selectLocation('Près de moi');
+    } catch (_e) {}
+  }
+
   function handleSearch() {
-    router.push({ pathname: '/results', params: { location: locationLabel || location, when, covers: String(totalCovers) } });
+    router.push({
+      pathname: '/results',
+      params: {
+        location: locationLabel || location,
+        when,
+        covers: String(totalCovers),
+        lat: userCoords ? String(userCoords.lat) : '',
+        lng: userCoords ? String(userCoords.lng) : '',
+      },
+    });
   }
 
   function clearAll() {
@@ -128,7 +149,7 @@ export default function SearchScreen() {
             </View>
             <Text style={styles.suggestionsLabel}>Suggestions de destinations</Text>
             {SUGGESTIONS.map((s) => (
-              <TouchableOpacity key={s.title} style={styles.suggestion} onPress={() => selectLocation(s.title)}>
+              <TouchableOpacity key={s.title} style={styles.suggestion} onPress={() => s.title === 'Près de moi' ? handleNearMe() : selectLocation(s.title)}>
                 <View style={styles.suggestionIcon} />
                 <View>
                   <Text style={styles.suggestionTitle}>{s.title}</Text>
@@ -196,7 +217,7 @@ export default function SearchScreen() {
                 onPress={() => selectQuickDate("Aujourd'hui")}
               >
                 <Text style={[styles.quickBtnText, when === "Aujourd'hui" && !selectedDate && styles.quickBtnTextActive]}>
-                  Aujourd'hui
+                  {"Aujourd'hui"}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity

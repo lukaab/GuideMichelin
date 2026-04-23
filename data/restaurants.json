@@ -10,7 +10,9 @@
     "lat": 48.8638,
     "lng": 2.3376,
     "description": "Cadre historique exceptionnel sous les arcades du Palais-Royal, cuisine classique revisitée.",
-    "image": "https://picsum.photos/seed/restaurant1/400/250"
+    "image": "https://picsum.photos/seed/restaurant1/400/250",
+    "features": ["romantique", "bar-a-vins", "pmr"],
+    "dietary": []
   },
   {
     "id": 2,
@@ -23,7 +25,9 @@
     "lat": 48.8534,
     "lng": 2.3793,
     "description": "La bistronomie parisienne dans toute sa splendeur. Menu créatif et produits du marché.",
-    "image": "https://picsum.photos/seed/restaurant2/400/250"
+    "image": "https://picsum.photos/seed/restaurant2/400/250",
+    "features": ["terrasse", "anime"],
+    "dietary": ["vegetarien", "sans-gluten"]
   },
   {
     "id": 3,
@@ -36,7 +40,9 @@
     "lat": 48.8738,
     "lng": 2.3467,
     "description": "Institution parisienne depuis 1896. Cuisine traditionnelle à prix accessibles dans un cadre Belle Époque.",
-    "image": "https://picsum.photos/seed/restaurant3/400/250"
+    "image": "https://picsum.photos/seed/restaurant3/400/250",
+    "features": ["anime", "enfants", "pmr"],
+    "dietary": []
   },
   {
     "id": 4,
@@ -49,7 +55,9 @@
     "lat": 48.8629,
     "lng": 2.3488,
     "description": "Gregory Marchand signe une cuisine créative mêlant influences françaises et anglo-saxonnes.",
-    "image": "https://picsum.photos/seed/restaurant4/400/250"
+    "image": "https://picsum.photos/seed/restaurant4/400/250",
+    "features": ["anime", "bar-a-vins"],
+    "dietary": ["vegetarien"]
   },
   {
     "id": 5,
@@ -62,7 +70,9 @@
     "lat": 48.8706,
     "lng": 2.3099,
     "description": "Hôtel particulier haussmannien, cuisine d'auteur entre tradition et modernité.",
-    "image": "https://picsum.photos/seed/restaurant5/400/250"
+    "image": "https://picsum.photos/seed/restaurant5/400/250",
+    "features": ["romantique", "bar-a-vins", "calme"],
+    "dietary": []
   },
   {
     "id": 6,
@@ -75,7 +85,9 @@
     "lat": 43.6897,
     "lng": 7.2525,
     "description": "Face à la Méditerranée, cuisine marine d'exception par Gérald Passédat.",
-    "image": "https://picsum.photos/seed/restaurant6/400/250"
+    "image": "https://picsum.photos/seed/restaurant6/400/250",
+    "features": ["terrasse", "romantique", "calme", "pmr"],
+    "dietary": ["sans-gluten"]
   },
   {
     "id": 7,
@@ -88,7 +100,9 @@
     "lat": 45.7637,
     "lng": 4.8269,
     "description": "Authentique bouchon lyonnais. Quenelles, tablier de sapeur et tête de veau au menu.",
-    "image": "https://picsum.photos/seed/restaurant7/400/250"
+    "image": "https://picsum.photos/seed/restaurant7/400/250",
+    "features": ["calme", "enfants"],
+    "dietary": []
   },
   {
     "id": 8,
@@ -101,7 +115,9 @@
     "lat": 45.7681,
     "lng": 4.8348,
     "description": "Maison centenaire, berceau de la gastronomie lyonnaise. Matthieu Viannay perpétue le mythe.",
-    "image": "https://picsum.photos/seed/restaurant8/400/250"
+    "image": "https://picsum.photos/seed/restaurant8/400/250",
+    "features": ["romantique", "calme", "bar-a-vins"],
+    "dietary": []
   },
   {
     "id": 9,
@@ -114,7 +130,9 @@
     "lat": 43.6965,
     "lng": 7.2745,
     "description": "Minuscule repaire niçois sans téléphone ni carte bancaire. Cuisine de terroir absolument authentique.",
-    "image": "https://picsum.photos/seed/restaurant9/400/250"
+    "image": "https://picsum.photos/seed/restaurant9/400/250",
+    "features": ["calme", "animaux"],
+    "dietary": ["halal"]
   },
   {
     "id": 10,
@@ -127,7 +145,9 @@
     "lat": 48.8518,
     "lng": 2.3572,
     "description": "Brasserie alsacienne typique sur les quais de l'Isle Saint-Louis. Choucroute et bières maison.",
-    "image": "https://picsum.photos/seed/restaurant10/400/250"
+    "image": "https://picsum.photos/seed/restaurant10/400/250",
+    "features": ["terrasse", "anime", "enfants", "animaux"],
+    "dietary": []
   },
   {
     "id": 11,
@@ -140,7 +160,9 @@
     "lat": 48.8553,
     "lng": 2.3149,
     "description": "Alain Passard et sa cuisine végétale d'exception. Légumes du potager en vedette.",
-    "image": "https://picsum.photos/seed/restaurant11/400/250"
+    "image": "https://picsum.photos/seed/restaurant11/400/250",
+    "features": ["calme", "romantique", "pmr"],
+    "dietary": ["vegan", "vegetarien", "sans-gluten"]
   },
   {
     "id": 12,
@@ -153,6 +175,8 @@
     "lat": 45.7575,
     "lng": 4.8432,
     "description": "Joseph Viola, MOF charcutier, signe les meilleures quenelles et gratins lyonnais de la ville.",
-    "image": "https://picsum.photos/seed/restaurant12/400/250"
+    "image": "https://picsum.photos/seed/restaurant12/400/250",
+    "features": ["anime", "enfants", "animaux"],
+    "dietary": []
   }
 ]
