@@ -51,3 +51,10 @@ export interface User {
   visitedRestaurants: number[];
   stats: UserStats;
 }
+
+export interface CheckInResult {
+  user: User;
+  xpGained: number;
+  completedChallenges: string[];
+  unlockedBadges: string[];
+}

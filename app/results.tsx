@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   Platform,
   ScrollView,
@@ -13,19 +14,23 @@ import {
 import MapSection from '../components/MapSection';
 import MichelinLogo from '../components/MichelinLogo';
 import RestaurantCardLarge from '../components/RestaurantCardLarge';
+import { useAuth } from '../lib/auth';
 import { applyFilters, filterStore } from '../lib/domain/filters';
+import { checkIn, loadProfile } from '../lib/profile';
 import { getRestaurants } from '../lib/restaurants';
-import { Restaurant } from '../types';
+import { CheckInResult, Restaurant, User } from '../types';
 
 const all = getRestaurants();
 
 export default function ResultsScreen() {
   const router = useRouter();
+  const { authUser } = useAuth();
   const { location, when, covers } = useLocalSearchParams<{
     location: string;
     when: string;
     covers: string;
   }>();
+  const [user, setUser] = useState<User | null>(null);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -36,13 +41,55 @@ export default function ResultsScreen() {
   useFocusEffect(
     useCallback(() => {
       setActiveFilters([...filterStore.active]);
-    }, []),
+      if (authUser) {
+        loadProfile(authUser.id, authUser.username).then(setUser);
+      }
+    }, [authUser])
   );
+
+  useEffect(() => {
+    if (authUser) {
+      loadProfile(authUser.id, authUser.username).then(setUser);
+    }
+  }, [authUser]);
 
   const filtered = applyFilters(all, location ?? '', activeFilters);
 
   function toggleFav(id: number) {
     setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
+  }
+
+  async function handleCheckin(restaurant: Restaurant) {
+    if (!user) return;
+
+    const result: CheckInResult = await checkIn(
+      user,
+      restaurant.id,
+      restaurant.category,
+      restaurant.city
+    );
+
+    setUser(result.user);
+
+    const lines: string[] = [`+${result.xpGained} XP gagnes !`];
+
+    if (result.completedChallenges.length > 0) {
+      lines.push(
+        `Challenge${result.completedChallenges.length > 1 ? 's' : ''} complete${
+          result.completedChallenges.length > 1 ? 's' : ''
+        } !`
+      );
+    }
+
+    if (result.unlockedBadges.length > 0) {
+      lines.push(
+        `Badge${result.unlockedBadges.length > 1 ? 's' : ''} debloque${
+          result.unlockedBadges.length > 1 ? 's' : ''
+        } !`
+      );
+    }
+
+    Alert.alert('Etape validee', lines.join('\n'));
   }
 
   function openRestaurant(restaurant: Restaurant) {
@@ -160,12 +207,14 @@ export default function ResultsScreen() {
                 onPress={() => openRestaurant(restaurant)}
                 favorited={favorites.includes(restaurant.id)}
                 onFavorite={() => toggleFav(restaurant.id)}
+                visited={!!user?.visitedRestaurants.includes(restaurant.id)}
+                onCheckin={user ? () => handleCheckin(restaurant) : undefined}
               />
             ))}
             {filtered.length === 0 && (
               <View style={styles.emptyState}>
                 <Text style={styles.emptyTitle}>Aucun résultat</Text>
-                <Text style={styles.emptySub}>Essayez d'ajuster vos filtres</Text>
+                <Text style={styles.emptySub}>Essayez de modifier vos filtres</Text>
               </View>
             )}
           </ScrollView>

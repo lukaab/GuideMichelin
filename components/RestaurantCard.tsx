@@ -29,7 +29,9 @@ export default function RestaurantCard({ restaurant, onCheckin, visited }: Props
       <Image source={{ uri: restaurant.image }} style={styles.image} />
       <View style={styles.body}>
         <View style={styles.header}>
-          <Text style={styles.name} numberOfLines={1}>{restaurant.name}</Text>
+          <Text style={styles.name} numberOfLines={1}>
+            {restaurant.name}
+          </Text>
           <Text style={styles.price}>{restaurant.priceRange}</Text>
         </View>
         <View style={styles.meta}>
@@ -41,15 +43,15 @@ export default function RestaurantCard({ restaurant, onCheckin, visited }: Props
           <Text style={styles.cuisine}>{restaurant.cuisine}</Text>
         </View>
         <Text style={styles.city}>📍 {restaurant.city}</Text>
-        <Text style={styles.description} numberOfLines={2}>{restaurant.description}</Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {restaurant.description}
+        </Text>
         <TouchableOpacity
           style={[styles.checkinBtn, visited && styles.checkinBtnVisited]}
           onPress={onCheckin}
           disabled={visited}
         >
-          <Text style={styles.checkinText}>
-            {visited ? '✓ Visité — +100 XP' : '🍽️ J\'y étais !'}
-          </Text>
+          <Text style={styles.checkinText}>{visited ? '✓ Visite' : "J'y etais !"}</Text>
         </TouchableOpacity>
       </View>
     </View>

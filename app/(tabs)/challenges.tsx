@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ProgressBar from '../../components/ProgressBar';
 import { buildChallenges } from '../../lib/domain/gamification';
@@ -16,6 +17,14 @@ export default function ChallengesScreen() {
     if (authUser) loadProfile(authUser.id).then(setUser);
   }, [authUser]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (authUser) {
+        loadProfile(authUser.id).then(setUser);
+      }
+    }, [authUser])
+  );
+
   if (!user) return null;
 
   const challenges = buildChallenges(user);
@@ -26,31 +35,36 @@ export default function ChallengesScreen() {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🎯 Challenges</Text>
         <View style={styles.progressBadge}>
-          <Text style={styles.progressText}>{completed}/{challenges.length}</Text>
+          <Text style={styles.progressText}>
+            {completed}/{challenges.length}
+          </Text>
         </View>
       </View>
 
       <View style={styles.overviewCard}>
         <Text style={styles.overviewLabel}>Progression globale</Text>
-        <ProgressBar
-          progress={completed / challenges.length}
-          color={MICHELIN_RED}
-          height={12}
-        />
-        <Text style={styles.overviewSub}>{challenges.length - completed} challenge{challenges.length - completed > 1 ? 's' : ''} restant{challenges.length - completed > 1 ? 's' : ''}</Text>
+        <ProgressBar progress={completed / challenges.length} color={MICHELIN_RED} height={12} />
+        <Text style={styles.overviewSub}>
+          {challenges.length - completed} challenge{challenges.length - completed > 1 ? 's' : ''}{' '}
+          restant{challenges.length - completed > 1 ? 's' : ''}
+        </Text>
       </View>
 
       <Text style={styles.sectionTitle}>En cours</Text>
-      {challenges.filter((c) => !c.completed).map((c) => (
-        <ChallengeItem key={c.id} challenge={c} />
-      ))}
+      {challenges
+        .filter((c) => !c.completed)
+        .map((c) => (
+          <ChallengeItem key={c.id} challenge={c} />
+        ))}
 
       {completed > 0 && (
         <>
           <Text style={styles.sectionTitle}>Complétés ✓</Text>
-          {challenges.filter((c) => c.completed).map((c) => (
-            <ChallengeItem key={c.id} challenge={c} />
-          ))}
+          {challenges
+            .filter((c) => c.completed)
+            .map((c) => (
+              <ChallengeItem key={c.id} challenge={c} />
+            ))}
         </>
       )}
     </ScrollView>

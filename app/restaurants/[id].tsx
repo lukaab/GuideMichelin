@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   Image,
   Platform,
   ScrollView,
@@ -14,7 +15,7 @@ import StarRow from '../../components/StarRow';
 import { useAuth } from '../../lib/auth';
 import { checkIn, loadProfile } from '../../lib/profile';
 import { getRestaurantById } from '../../lib/restaurants';
-import { User } from '../../types';
+import { CheckInResult, User } from '../../types';
 
 export default function RestaurantDetailScreen() {
   const router = useRouter();
@@ -46,13 +47,34 @@ export default function RestaurantDetailScreen() {
 
   async function handleCheckin() {
     if (!user || visited) return;
-    const updated = await checkIn(
+
+    const result: CheckInResult = await checkIn(
       user,
       currentRestaurant.id,
       currentRestaurant.category,
       currentRestaurant.city
     );
-    setUser(updated);
+    setUser(result.user);
+
+    const lines: string[] = [`+${result.xpGained} XP gagnes !`];
+
+    if (result.completedChallenges.length > 0) {
+      lines.push(
+        `Challenge${result.completedChallenges.length > 1 ? 's' : ''} complete${
+          result.completedChallenges.length > 1 ? 's' : ''
+        } !`
+      );
+    }
+
+    if (result.unlockedBadges.length > 0) {
+      lines.push(
+        `Badge${result.unlockedBadges.length > 1 ? 's' : ''} debloque${
+          result.unlockedBadges.length > 1 ? 's' : ''
+        } !`
+      );
+    }
+
+    Alert.alert('Etape validee', lines.join('\n'));
   }
 
   return (
@@ -68,7 +90,8 @@ export default function RestaurantDetailScreen() {
             <StarRow category={restaurant.category} size={16} />
             <Text style={styles.name}>{restaurant.name}</Text>
             <Text style={styles.meta}>
-              {currentRestaurant.city} · {currentRestaurant.priceRange} · {currentRestaurant.cuisine}
+              {currentRestaurant.city} · {currentRestaurant.priceRange} ·{' '}
+              {currentRestaurant.cuisine}
             </Text>
           </View>
         </View>
@@ -81,13 +104,13 @@ export default function RestaurantDetailScreen() {
             </View>
           </View>
 
-          <Text style={styles.sectionTitle}>À propos</Text>
+          <Text style={styles.sectionTitle}>A propos</Text>
           <Text style={styles.description}>{currentRestaurant.description}</Text>
 
-          <Text style={styles.sectionTitle}>Expérience</Text>
+          <Text style={styles.sectionTitle}>Experience</Text>
           <View style={styles.factsGrid}>
             <View style={styles.factCard}>
-              <Text style={styles.factLabel}>Catégorie</Text>
+              <Text style={styles.factLabel}>Categorie</Text>
               <Text style={styles.factValue}>{currentRestaurant.category}</Text>
             </View>
             <View style={styles.factCard}>
@@ -99,8 +122,11 @@ export default function RestaurantDetailScreen() {
               <Text style={styles.factValue}>{currentRestaurant.priceRange}</Text>
             </View>
             <View style={styles.factCard}>
-              <Text style={styles.factLabel}>Récompense</Text>
-              <Text style={styles.factValue}>+100 XP</Text>
+              <Text style={styles.factLabel}>Recompense</Text>
+              <Text style={styles.factValue}>
+                +100 XP
+                {'\n'}+ bonus challenges
+              </Text>
             </View>
           </View>
         </View>
@@ -109,7 +135,9 @@ export default function RestaurantDetailScreen() {
       <View style={styles.bottomBar}>
         <View>
           <Text style={styles.bottomLabel}>Michelin Quest</Text>
-          <Text style={styles.bottomValue}>{visited ? 'Déjà visité' : 'Ajoutez cette étape à votre passport'}</Text>
+          <Text style={styles.bottomValue}>
+            {visited ? 'Deja visite' : 'Ajoutez cette etape a votre passport'}
+          </Text>
         </View>
         <TouchableOpacity
           style={[styles.primaryBtn, visited && styles.primaryBtnDone]}
@@ -117,7 +145,7 @@ export default function RestaurantDetailScreen() {
           disabled={visited}
         >
           <Text style={[styles.primaryBtnText, visited && styles.primaryBtnTextDone]}>
-            {visited ? '✓ Validé' : "J'y étais"}
+            {visited ? '✓ Valide' : "J'y etais"}
           </Text>
         </TouchableOpacity>
       </View>

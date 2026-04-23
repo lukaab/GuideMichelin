@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ALL_BADGES } from './domain/gamification';
 import { supabase, supabaseConfigured } from './supabase';
-import { User, UserStats } from '../types';
+import { CheckInResult, User, UserStats } from '../types';
 
 const cacheKey = (userId: string) => `@michelin_profile_${userId}`;
 
@@ -12,8 +13,48 @@ const DEFAULT_STATS: UserStats = {
   totalXP: 0,
 };
 
+const CHALLENGE_REWARDS: Array<{
+  id: string;
+  xp: number;
+  crossed: (prev: UserStats, next: UserStats) => boolean;
+}> = [
+  {
+    id: 'first_visit',
+    xp: 200,
+    crossed: (prev, next) => prev.totalVisits < 1 && next.totalVisits >= 1,
+  },
+  {
+    id: 'bib_5',
+    xp: 500,
+    crossed: (prev, next) => prev.bibGourmandVisits < 5 && next.bibGourmandVisits >= 5,
+  },
+  {
+    id: 'three_cities',
+    xp: 400,
+    crossed: (prev, next) => prev.citiesExplored.length < 3 && next.citiesExplored.length >= 3,
+  },
+  {
+    id: 'starred_3',
+    xp: 600,
+    crossed: (prev, next) => prev.starredVisits < 3 && next.starredVisits >= 3,
+  },
+  {
+    id: 'total_10',
+    xp: 1000,
+    crossed: (prev, next) => prev.totalVisits < 10 && next.totalVisits >= 10,
+  },
+];
+
 function defaultUser(userId: string, username = 'Explorer'): User {
-  return { id: userId, username, xp: 0, level: 1, badges: [], visitedRestaurants: [], stats: DEFAULT_STATS };
+  return {
+    id: userId,
+    username,
+    xp: 0,
+    level: 1,
+    badges: [],
+    visitedRestaurants: [],
+    stats: DEFAULT_STATS,
+  };
 }
 
 export function xpToLevel(xp: number): number {
@@ -46,11 +87,12 @@ export async function loadProfile(userId: string, username?: string): Promise<Us
     }
   }
 
-  // Local cache (used in local mode OR as Supabase fallback)
   try {
     const raw = await AsyncStorage.getItem(cacheKey(userId));
     if (raw) return JSON.parse(raw);
-  } catch {}
+  } catch {
+    // Ignore invalid local cache and rebuild the profile from defaults.
+  }
 
   const user = defaultUser(userId, username);
   await AsyncStorage.setItem(cacheKey(userId), JSON.stringify(user));
@@ -78,11 +120,13 @@ export async function checkIn(
   user: User,
   restaurantId: number,
   category: string,
-  city: string,
-): Promise<User> {
-  if (user.visitedRestaurants.includes(restaurantId)) return user;
+  city: string
+): Promise<CheckInResult> {
+  if (user.visitedRestaurants.includes(restaurantId)) {
+    return { user, xpGained: 0, completedChallenges: [], unlockedBadges: [] };
+  }
 
-  const xpGain = 100;
+  const baseXP = 100;
   const newStats: UserStats = {
     ...user.stats,
     totalVisits: user.stats.totalVisits + 1,
@@ -93,18 +137,48 @@ export async function checkIn(
     citiesExplored: user.stats.citiesExplored.includes(city)
       ? user.stats.citiesExplored
       : [...user.stats.citiesExplored, city],
-    totalXP: user.stats.totalXP + xpGain,
+    totalXP: user.stats.totalXP + baseXP,
   };
 
-  const newXP = user.xp + xpGain;
+  const completedChallenges = CHALLENGE_REWARDS.filter((reward) =>
+    reward.crossed(user.stats, newStats)
+  ).map((reward) => reward.id);
+
+  const bonusXP = CHALLENGE_REWARDS.filter((reward) => reward.crossed(user.stats, newStats)).reduce(
+    (sum, reward) => sum + reward.xp,
+    0
+  );
+
+  const totalXPGained = baseXP + bonusXP;
+  const newXP = user.xp + totalXPGained;
+
+  const userWithNewStats: User = {
+    ...user,
+    xp: newXP,
+    stats: newStats,
+  };
+
+  const unlockedBadges = ALL_BADGES.filter(
+    (badge) => !user.badges.includes(badge.id) && badge.check(userWithNewStats)
+  ).map((badge) => badge.id);
+
   const updated: User = {
     ...user,
     xp: newXP,
     level: xpToLevel(newXP),
+    badges: [...user.badges, ...unlockedBadges],
     visitedRestaurants: [...user.visitedRestaurants, restaurantId],
-    stats: newStats,
+    stats: {
+      ...newStats,
+      totalXP: newStats.totalXP + bonusXP,
+    },
   };
 
   await saveProfile(updated);
-  return updated;
+  return {
+    user: updated,
+    xpGained: totalXPGained,
+    completedChallenges,
+    unlockedBadges,
+  };
 }

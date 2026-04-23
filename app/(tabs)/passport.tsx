@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ProgressBar from '../../components/ProgressBar';
 import rawRestaurants from '../../data/restaurants.json';
@@ -23,6 +24,14 @@ export default function PassportScreen() {
     if (authUser) loadProfile(authUser.id).then(setUser);
   }, [authUser]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (authUser) {
+        loadProfile(authUser.id).then(setUser);
+      }
+    }, [authUser])
+  );
+
   if (!user) return null;
 
   const visited = (rawRestaurants as Restaurant[]).filter((r) =>
@@ -34,55 +43,74 @@ export default function PassportScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📖 Food Passport</Text>
+        <Text style={styles.headerTitle}>Food Passport</Text>
         <Text style={styles.headerSub}>Votre carnet gastronomique</Text>
       </View>
 
-      {/* Passport cover */}
       <View style={styles.passportCover}>
         <Text style={styles.passportEmoji}>🍽️</Text>
         <Text style={styles.passportTitle}>MICHELIN QUEST</Text>
         <Text style={styles.passportSub}>PASSPORT GASTRONOMIQUE</Text>
         <View style={styles.passportDivider} />
         <Text style={styles.passportName}>{user.username}</Text>
-        <Text style={styles.passportLevel}>Niveau {user.level} · {user.xp} XP</Text>
+        <Text style={styles.passportLevel}>
+          Niveau {user.level} · {user.xp} XP
+        </Text>
       </View>
 
-      {/* Progress overview */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Progression</Text>
         <View style={styles.progressRow}>
           <Text style={styles.progressLabel}>
-            {user.stats.totalVisits} / {totalRestaurants} restaurants visités
+            {user.stats.totalVisits} / {totalRestaurants} restaurants visites
           </Text>
-          <Text style={styles.progressPct}>
-            {Math.round(passportProgress * 100)}%
-          </Text>
+          <Text style={styles.progressPct}>{Math.round(passportProgress * 100)}%</Text>
         </View>
         <ProgressBar progress={passportProgress} color={MICHELIN_RED} height={10} />
       </View>
 
-      {/* Category breakdown */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Par catégorie</Text>
+        <Text style={styles.cardTitle}>Par categorie</Text>
         {[
-          { label: 'Trois étoiles ⭐⭐⭐', count: visited.filter(r => r.category === 'Trois étoiles').length, total: (rawRestaurants as Restaurant[]).filter(r => r.category === 'Trois étoiles').length },
-          { label: 'Deux étoiles ⭐⭐', count: visited.filter(r => r.category === 'Deux étoiles').length, total: (rawRestaurants as Restaurant[]).filter(r => r.category === 'Deux étoiles').length },
-          { label: 'Une étoile ⭐', count: visited.filter(r => r.category === 'Une étoile').length, total: (rawRestaurants as Restaurant[]).filter(r => r.category === 'Une étoile').length },
-          { label: 'Bib Gourmand 😊', count: visited.filter(r => r.category === 'Bib Gourmand').length, total: (rawRestaurants as Restaurant[]).filter(r => r.category === 'Bib Gourmand').length },
+          {
+            label: 'Trois etoiles ⭐⭐⭐',
+            count: visited.filter((r) => r.category === 'Trois étoiles').length,
+            total: (rawRestaurants as Restaurant[]).filter((r) => r.category === 'Trois étoiles')
+              .length,
+          },
+          {
+            label: 'Deux etoiles ⭐⭐',
+            count: visited.filter((r) => r.category === 'Deux étoiles').length,
+            total: (rawRestaurants as Restaurant[]).filter((r) => r.category === 'Deux étoiles')
+              .length,
+          },
+          {
+            label: 'Une etoile ⭐',
+            count: visited.filter((r) => r.category === 'Une étoile').length,
+            total: (rawRestaurants as Restaurant[]).filter((r) => r.category === 'Une étoile')
+              .length,
+          },
+          {
+            label: 'Bib Gourmand 😊',
+            count: visited.filter((r) => r.category === 'Bib Gourmand').length,
+            total: (rawRestaurants as Restaurant[]).filter((r) => r.category === 'Bib Gourmand')
+              .length,
+          },
         ].map((cat) => (
           <View key={cat.label} style={styles.catRow}>
             <Text style={styles.catLabel}>{cat.label}</Text>
-            <Text style={styles.catCount}>{cat.count}/{cat.total}</Text>
+            <Text style={styles.catCount}>
+              {cat.count}/{cat.total}
+            </Text>
           </View>
         ))}
       </View>
 
-      {/* Visited restaurants list */}
       <Text style={styles.sectionTitle}>
-        {visited.length > 0 ? `${visited.length} restaurant${visited.length > 1 ? 's' : ''} visité${visited.length > 1 ? 's' : ''}` : 'Aucun restaurant visité'}
+        {visited.length > 0
+          ? `${visited.length} restaurant${visited.length > 1 ? 's' : ''} visite${visited.length > 1 ? 's' : ''}`
+          : 'Aucun restaurant visite'}
       </Text>
 
       {visited.length === 0 && (
@@ -90,7 +118,8 @@ export default function PassportScreen() {
           <Text style={styles.emptyEmoji}>🗺️</Text>
           <Text style={styles.emptyTitle}>Votre aventure commence ici</Text>
           <Text style={styles.emptyDesc}>
-            Allez sur la carte, trouvez un restaurant et cochez "J'y étais !" pour remplir votre passport.
+            Allez sur la carte, trouvez un restaurant et cochez le bouton de check-in pour remplir
+            votre passport.
           </Text>
         </View>
       )}
@@ -102,7 +131,9 @@ export default function PassportScreen() {
           </View>
           <View style={styles.visitedRight}>
             <Text style={styles.visitedName}>{r.name}</Text>
-            <Text style={styles.visitedMeta}>{r.city} · {r.cuisine} · {r.priceRange}</Text>
+            <Text style={styles.visitedMeta}>
+              {r.city} · {r.cuisine} · {r.priceRange}
+            </Text>
             <View style={styles.visitedBadge}>
               <Text style={styles.visitedBadgeText}>{r.category}</Text>
             </View>

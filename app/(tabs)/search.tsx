@@ -110,7 +110,7 @@ export default function SearchScreen() {
         {/* Où card */}
         {step === 'ou' ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Où ?</Text>
+            <Text style={styles.cardTitle}>Ou ?</Text>
             <View style={styles.searchInputWrap}>
               <Ionicons name="search-outline" size={16} color="#9B9B9B" style={{ marginRight: 8 }} />
               <TextInput
@@ -147,7 +147,7 @@ export default function SearchScreen() {
         {/* Quand card */}
         {step === 'quand' ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Quand ?</Text>
+            <Text style={styles.cardTitle}>Ou ?</Text>
 
             {/* Dates / Flexibles toggle */}
             <View style={styles.toggleRow}>
@@ -228,7 +228,7 @@ export default function SearchScreen() {
         {/* Qui card */}
         {step === 'qui' ? (
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Qui ?</Text>
+            <Text style={styles.cardTitle}>Ou ?</Text>
             <CounterRow label="Adultes" sub="13 ans et plus" value={adults} min={1} onChange={setAdults} />
             <CounterRow label="Enfants" sub="De 2 à 12 ans" value={children} onChange={setChildren} />
             <CounterRow label="Bébés" sub="Moins de 2 ans" value={babies} onChange={setBabies} />
@@ -464,3 +464,4 @@ const styles = StyleSheet.create({
   },
   searchBtnText: { color: '#fff', fontWeight: '700', fontSize: 16 },
 });
+
