@@ -55,17 +55,32 @@ interface Props {
   restaurants: Restaurant[];
   onSelectRestaurant: (r: Restaurant) => void;
   onPreviewVisibilityChange?: (visible: boolean) => void;
+  userCoords?: { lat: number; lng: number };
 }
 
 export default function MapSection({
   restaurants,
   onSelectRestaurant,
   onPreviewVisibilityChange,
+  userCoords,
 }: Props) {
   const router = useRouter();
   const mapRef = useRef<MapView | null>(null);
   const previewAnim = useRef(new Animated.Value(0)).current;
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
+
+  useEffect(() => {
+    if (!userCoords) return;
+    mapRef.current?.animateToRegion(
+      {
+        latitude: userCoords.lat,
+        longitude: userCoords.lng,
+        latitudeDelta: 0.25,
+        longitudeDelta: 0.25,
+      },
+      600
+    );
+  }, [userCoords]);
 
   useEffect(() => {
     if (!selectedRestaurant) return;
@@ -119,6 +134,7 @@ export default function MapSection({
         ref={mapRef}
         style={styles.map}
         customMapStyle={MAP_STYLE}
+        showsUserLocation={!!userCoords}
         showsCompass={false}
         showsPointsOfInterest={false}
         showsBuildings={false}
@@ -133,7 +149,6 @@ export default function MapSection({
         }}
       >
         {restaurants.map((restaurant) => {
-          const meta = CATEGORY_META[restaurant.category];
           const selected = selectedRestaurant?.id === restaurant.id;
           const markerImage = selected
             ? MARKER_IMAGES[restaurant.category].selected

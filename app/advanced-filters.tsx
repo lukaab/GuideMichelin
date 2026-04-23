@@ -13,7 +13,7 @@ export default function AdvancedFiltersScreen() {
   }
 
   function handleApply() {
-    filterStore.active = selected;
+    filterStore.set(selected);
     router.back();
   }
 

@@ -29,7 +29,12 @@ function RootContent() {
 
   return (
     <>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen
+          name="advanced-filters"
+          options={{ presentation: 'transparentModal', animation: 'slide_from_bottom' }}
+        />
+      </Stack>
       <StatusBar style="dark" />
     </>
   );
