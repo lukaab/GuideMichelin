@@ -53,10 +53,10 @@ export default function DecouvrirScreen() {
 
   async function handleCheckin(r: Restaurant) {
     if (!user) return;
-    const updated = await checkIn(user, r.id, r.category, r.city);
-    setUser(updated);
+    const result = await checkIn(user, r.id, r.category, r.city);
+    setUser(result.user);
     setSelected(null);
-    showToast(`+100 XP · ${r.name} ajouté à votre passport !`);
+    showToast(`+${result.xpGained} XP · ${r.name} ajouté à votre passport !`);
   }
 
   if (isDesktop) {

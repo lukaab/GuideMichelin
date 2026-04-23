@@ -1,8 +1,8 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import {
-  Animated,
   Platform,
   ScrollView,
   StyleSheet,
@@ -11,16 +11,19 @@ import {
   View,
 } from 'react-native';
 import MapSection from '../components/MapSection';
-import MichelinLogo from '../components/MichelinLogo';
 import RestaurantCardLarge from '../components/RestaurantCardLarge';
-import { applyFilters, filterStore, haversineKm } from '../lib/domain/filters';
-import { getRestaurants } from '../lib/restaurants';
-import { Restaurant } from '../types';
+import rawRestaurants from '../data/restaurants.json';
+import { useAuth } from '../lib/auth';
+import { applyFilters, filterStore } from '../lib/domain/filters';
+import { checkIn, loadProfile } from '../lib/profile';
+import { CheckInResult, Restaurant, User } from '../types';
 
-const all = getRestaurants();
+const FAVS_KEY = '@michelin_favorites';
+const RED = '#E2231A';
 
 export default function ResultsScreen() {
   const router = useRouter();
+  const { authUser } = useAuth();
   const { location, when, covers, lat, lng } = useLocalSearchParams<{
     location: string;
     when: string;
@@ -28,274 +31,241 @@ export default function ResultsScreen() {
     lat: string;
     lng: string;
   }>();
+
+  const [user, setUser] = useState<User | null>(null);
   const [favorites, setFavorites] = useState<number[]>([]);
-  const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [showSheet, setShowSheet] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<string[]>(() => [...filterStore.active]);
-  const sheetAnim = useRef(new Animated.Value(1)).current;
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
 
-  useEffect(() => {
-    filterStore.load().then(() => setActiveFilters([...filterStore.active]));
-  }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      setActiveFilters([...filterStore.active]);
-    }, []),
-  );
-
-  const parsedLat = Number(lat);
-  const parsedLng = Number(lng);
-  const userCoords =
-    lat && lng && isFinite(parsedLat) && isFinite(parsedLng)
-      ? { lat: parsedLat, lng: parsedLng }
-      : undefined;
+  const userCoords = lat && lng ? { lat: Number(lat), lng: Number(lng) } : undefined;
+  const all = rawRestaurants as Restaurant[];
   const filtered = applyFilters(all, location ?? '', activeFilters, userCoords);
 
-  function toggleFav(id: number) {
-    setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
-  }
+  useEffect(() => {
+    if (authUser) loadProfile(authUser.id, authUser.username).then(setUser);
+  }, [authUser]);
 
-  function openRestaurant(restaurant: Restaurant) {
-    router.push(`/restaurants/${restaurant.id}`);
-  }
-
-  function openFilters() {
-    router.push('/advanced-filters');
-  }
-
-  const subtitle = [when, covers ? `${covers} personne${Number(covers) > 1 ? 's' : ''}` : null]
-    .filter(Boolean)
-    .join(' · ');
+  // C1 — Chargement des favoris depuis AsyncStorage
+  useEffect(() => {
+    AsyncStorage.getItem(FAVS_KEY).then((raw) => {
+      if (raw) setFavorites(JSON.parse(raw));
+    });
+  }, []);
 
   useEffect(() => {
-    if (isPreviewOpen) {
-      Animated.timing(sheetAnim, {
-        toValue: 0,
-        duration: 220,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (finished) {
-          setShowSheet(false);
-        }
-      });
-      return;
-    }
+    filterStore.load().then(() => {
+      setActiveFilters([...filterStore.active]);
+    });
+  }, []);
 
-    setShowSheet(true);
-    sheetAnim.setValue(0);
-    Animated.timing(sheetAnim, {
-      toValue: 1,
-      duration: 260,
-      useNativeDriver: true,
-    }).start();
-  }, [isPreviewOpen, sheetAnim]);
+  // C1 — Toggle favori avec persistance AsyncStorage
+  function toggleFav(id: number) {
+    setFavorites((prev) => {
+      const next = prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id];
+      AsyncStorage.setItem(FAVS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }
 
-  const filterCount = activeFilters.length;
+  async function handleCheckin(r: Restaurant) {
+    if (!user) return;
+    const result: CheckInResult = await checkIn(user, r.id, r.category, r.city);
+    setUser(result.user);
+  }
+
+  function clearFilters() {
+    filterStore.set([]);
+    setActiveFilters([]);
+  }
 
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <MichelinLogo size="sm" />
-      </View>
-
-      <View style={styles.summaryBar}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={8}>
-          <Ionicons name="arrow-back" size={20} color="#1A1A1A" />
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color="#1A1A1A" />
         </TouchableOpacity>
-        <View style={styles.summaryTextWrap}>
-          <Text style={styles.summaryTitle} numberOfLines={1}>
-            {location || 'Restaurants à proximité'}
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {location || 'Résultats'}
           </Text>
-          {subtitle ? <Text style={styles.summarySubtitle}>{subtitle}</Text> : null}
+          <Text style={styles.headerSub}>
+            {filtered.length} restaurant{filtered.length !== 1 ? 's' : ''}
+            {when ? ` · ${when}` : ''}
+            {covers && Number(covers) > 0 ? ` · ${covers} pers.` : ''}
+          </Text>
         </View>
-        <TouchableOpacity onPress={openFilters} hitSlop={8} style={styles.filterBtn}>
+        <TouchableOpacity
+          onPress={() => router.push('/advanced-filters')}
+          hitSlop={8}
+          style={[styles.filterBtn, activeFilters.length > 0 && styles.filterBtnActive]}
+        >
           <Ionicons
             name="options-outline"
-            size={22}
-            color={filterCount > 0 ? '#E2231A' : '#1A1A1A'}
+            size={18}
+            color={activeFilters.length > 0 ? '#fff' : '#1A1A1A'}
           />
-          {filterCount > 0 && (
-            <View style={styles.filterBadge}>
-              <Text style={styles.filterBadgeText}>{filterCount}</Text>
-            </View>
+          {activeFilters.length > 0 && (
+            <Text style={styles.filterCount}>{activeFilters.length}</Text>
           )}
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.mapWrap, isPreviewOpen && styles.mapWrapExpanded]}>
-        <MapSection
-          restaurants={filtered}
-          userCoords={userCoords}
-          onSelectRestaurant={setSelectedRestaurant}
-          onPreviewVisibilityChange={(visible) => {
-            setIsPreviewOpen(visible);
-            if (!visible) {
-              setSelectedRestaurant(null);
-            }
-          }}
-        />
+      {/* Vue liste / carte */}
+      <View style={styles.toggleRow}>
+        <TouchableOpacity
+          style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+          onPress={() => setViewMode('list')}
+        >
+          <Ionicons name="list-outline" size={15} color={viewMode === 'list' ? '#fff' : '#6B7280'} />
+          <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
+            Liste
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleBtn, viewMode === 'map' && styles.toggleBtnActive]}
+          onPress={() => setViewMode('map')}
+        >
+          <Ionicons name="map-outline" size={15} color={viewMode === 'map' ? '#fff' : '#6B7280'} />
+          <Text style={[styles.toggleText, viewMode === 'map' && styles.toggleTextActive]}>
+            Carte
+          </Text>
+        </TouchableOpacity>
       </View>
 
-      {showSheet && (
-        <Animated.View
-          style={[
-            styles.sheetWrap,
-            {
-              opacity: sheetAnim,
-              transform: [
-                {
-                  translateY: sheetAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [40, 0],
-                  }),
-                },
-              ],
-            },
-          ]}
-        >
-          <View style={styles.sheetHandle} />
-          <Text style={styles.resultsCount}>
-            {selectedRestaurant
-              ? `À la une : ${selectedRestaurant.name}`
-              : `${filtered.length} Résultat${filtered.length > 1 ? 's' : ''}`}
+      {/* C4 — Empty state contextuel */}
+      {filtered.length === 0 && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyIcon}>🔍</Text>
+          <Text style={styles.emptyTitle}>Aucun résultat</Text>
+          <Text style={styles.emptySub}>
+            {activeFilters.length > 0
+              ? 'Essayez de retirer certains filtres'
+              : location && location !== 'Près de moi'
+                ? `Pas de restaurant Michelin à "${location}" dans notre base`
+                : 'Aucun restaurant disponible dans cette zone'}
           </Text>
-          <ScrollView
-            style={styles.sheet}
-            contentContainerStyle={styles.sheetContent}
-            showsVerticalScrollIndicator={false}
-          >
-            {filtered.map((restaurant) => (
-              <RestaurantCardLarge
-                key={restaurant.id}
-                restaurant={restaurant}
-                onPress={() => openRestaurant(restaurant)}
-                favorited={favorites.includes(restaurant.id)}
-                onFavorite={() => toggleFav(restaurant.id)}
-                distanceKm={location === 'Près de moi' && userCoords ? haversineKm(userCoords.lat, userCoords.lng, restaurant.lat, restaurant.lng) : undefined}
-              />
-            ))}
-            {filtered.length === 0 && (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>Aucun résultat</Text>
-                <Text style={styles.emptySub}>Essayez d'ajuster vos filtres</Text>
-              </View>
-            )}
-          </ScrollView>
-        </Animated.View>
+          {activeFilters.length > 0 && (
+            <TouchableOpacity style={styles.resetBtn} onPress={clearFilters}>
+              <Text style={styles.resetBtnText}>Effacer les filtres</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* C1 — Liste avec favoris persistants */}
+      {viewMode === 'list' && filtered.length > 0 && (
+        <ScrollView
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {filtered.map((r) => (
+            <RestaurantCardLarge
+              key={r.id}
+              restaurant={r}
+              favorited={favorites.includes(r.id)}
+              onFavorite={() => toggleFav(r.id)}
+              visited={user?.visitedRestaurants.includes(r.id)}
+              onCheckin={() => handleCheckin(r)}
+              onPress={() => router.push(`/restaurants/${r.id}`)}
+            />
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Vue carte */}
+      {viewMode === 'map' && filtered.length > 0 && (
+        <MapSection
+          restaurants={filtered}
+          onSelectRestaurant={(r) => router.push(`/restaurants/${r.id}`)}
+          userCoords={userCoords}
+        />
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-  },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
-    alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 52 : 28,
-    paddingBottom: 10,
-    backgroundColor: '#FFFFFF',
-  },
-  summaryBar: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 56 : 32,
+    paddingBottom: 14,
     paddingHorizontal: 16,
-    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
-    gap: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F0F0F0',
+    gap: 12,
   },
   backBtn: {
-    padding: 4,
-  },
-  summaryTextWrap: {
-    flex: 1,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#F5F5F5',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  summaryTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1A1A1A',
-  },
-  summarySubtitle: {
-    fontSize: 12,
-    color: '#9B9B9B',
-    marginTop: 2,
-  },
-  filterBtn: {
-    position: 'relative',
-  },
-  filterBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#E2231A',
-    borderRadius: 8,
-    width: 16,
-    height: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  filterBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
+  headerCenter: { flex: 1 },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A' },
+  headerSub: { fontSize: 12, color: '#9B9B9B', marginTop: 2 },
+  filterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    borderWidth: 1,
+    borderColor: '#E5E5E5',
   },
-  mapWrap: {
-    height: '38%',
+  filterBtnActive: { backgroundColor: RED, borderColor: RED },
+  filterCount: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  toggleRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  mapWrapExpanded: {
+  toggleBtn: {
     flex: 1,
-    height: undefined,
-  },
-  sheetWrap: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
     backgroundColor: '#FFFFFF',
   },
-  sheet: {
-    flex: 1,
-  },
-  sheetContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    backgroundColor: '#D1D5DB',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 14,
-  },
-  resultsCount: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    textAlign: 'center',
-    marginBottom: 12,
-    paddingHorizontal: 16,
-  },
+  toggleBtnActive: { backgroundColor: '#1A1A1A', borderColor: '#1A1A1A' },
+  toggleText: { fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  toggleTextActive: { color: '#FFFFFF' },
+  list: { flex: 1 },
+  listContent: { padding: 16, paddingBottom: 40 },
+  // C4 — Empty state
   emptyState: {
+    flex: 1,
     alignItems: 'center',
-    paddingVertical: 40,
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    paddingTop: 60,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    marginBottom: 8,
+  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: '#1A1A1A', marginBottom: 8, textAlign: 'center' },
+  emptySub: { fontSize: 14, color: '#9B9B9B', textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  resetBtn: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: RED,
   },
-  emptySub: {
-    fontSize: 14,
-    color: '#9B9B9B',
-  },
+  resetBtnText: { color: RED, fontWeight: '600', fontSize: 14 },
 });

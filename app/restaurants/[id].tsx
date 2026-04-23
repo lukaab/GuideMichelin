@@ -1,7 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
+  Animated,
   Image,
   Platform,
   ScrollView,
@@ -10,288 +12,280 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import StarRow from '../../components/StarRow';
+import rawRestaurants from '../../data/restaurants.json';
 import { useAuth } from '../../lib/auth';
 import { checkIn, loadProfile } from '../../lib/profile';
-import { getRestaurantById } from '../../lib/restaurants';
-import { User } from '../../types';
+import { CheckInResult, Restaurant, User } from '../../types';
+
+const RED = '#E2231A';
+
+const CATEGORY_LABEL: Record<string, string> = {
+  'Trois étoiles': '⭐⭐⭐ Trois étoiles Michelin',
+  'Deux étoiles': '⭐⭐ Deux étoiles Michelin',
+  'Une étoile': '⭐ Une étoile Michelin',
+  'Bib Gourmand': '😊 Bib Gourmand',
+};
 
 export default function RestaurantDetailScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
-  const restaurantId = Number(params.id);
-  const restaurant = getRestaurantById(restaurantId);
+  const { id } = useLocalSearchParams<{ id: string }>();
   const { authUser } = useAuth();
+
   const [user, setUser] = useState<User | null>(null);
+  const [showXPFloat, setShowXPFloat] = useState(false);
+  const floatAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  const restaurant = (rawRestaurants as Restaurant[]).find((r) => r.id === Number(id));
 
   useEffect(() => {
-    if (authUser) {
-      loadProfile(authUser.id, authUser.username).then(setUser);
-    }
+    if (authUser) loadProfile(authUser.id, authUser.username).then(setUser);
   }, [authUser]);
 
   if (!restaurant) {
     return (
-      <View style={styles.empty}>
-        <Text style={styles.emptyTitle}>Restaurant introuvable</Text>
-        <TouchableOpacity style={styles.backGhostBtn} onPress={() => router.back()}>
-          <Text style={styles.backGhostText}>Retour</Text>
+      <View style={styles.notFound}>
+        <Text style={styles.notFoundText}>Restaurant introuvable</Text>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
+          <Text style={styles.backLinkText}>← Retour</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  const currentRestaurant = restaurant;
-  const visited = !!user?.visitedRestaurants.includes(currentRestaurant.id);
+  const visited = user?.visitedRestaurants.includes(restaurant.id) ?? false;
+
+  // C2 — Animation "+100 XP" flottante
+  function triggerXPFloat() {
+    setShowXPFloat(true);
+    floatAnim.setValue(0);
+    fadeAnim.setValue(1);
+    Animated.parallel([
+      Animated.timing(floatAnim, { toValue: -80, duration: 900, useNativeDriver: true }),
+      Animated.sequence([
+        Animated.delay(400),
+        Animated.timing(fadeAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      ]),
+    ]).start(() => setShowXPFloat(false));
+  }
 
   async function handleCheckin() {
-    if (!user || visited) return;
-    const updated = await checkIn(
+    if (!user || visited || !restaurant) return;
+    triggerXPFloat();
+    const result: CheckInResult = await checkIn(
       user,
-      currentRestaurant.id,
-      currentRestaurant.category,
-      currentRestaurant.city
+      restaurant.id,
+      restaurant.category,
+      restaurant.city,
     );
-    setUser(updated);
+    setUser(result.user);
+
+    const lines: string[] = [`+${result.xpGained} XP gagnés !`];
+    if (result.completedChallenges.length > 0) {
+      const s = result.completedChallenges.length > 1 ? 's' : '';
+      lines.push(`🎯 Challenge${s} complété${s} !`);
+    }
+    if (result.unlockedBadges.length > 0) {
+      const s = result.unlockedBadges.length > 1 ? 's' : '';
+      lines.push(`🏅 Badge${s} débloqué${s} !`);
+    }
+    Alert.alert('Étape validée ✓', lines.join('\n'));
   }
 
   return (
     <View style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.hero}>
-          <Image source={{ uri: currentRestaurant.image }} style={styles.heroImage} />
-          <View style={styles.heroOverlay} />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
+        {/* Image hero */}
+        <View style={styles.imageWrap}>
+          <Image source={{ uri: restaurant.image }} style={styles.image} />
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={20} color="#111827" />
+            <Ionicons name="arrow-back" size={20} color="#1A1A1A" />
           </TouchableOpacity>
-          <View style={styles.heroCard}>
-            <StarRow category={restaurant.category} size={16} />
-            <Text style={styles.name}>{restaurant.name}</Text>
-            <Text style={styles.meta}>
-              {currentRestaurant.city} · {currentRestaurant.priceRange} · {currentRestaurant.cuisine}
-            </Text>
-          </View>
+          {visited && (
+            <View style={styles.visitedBadge}>
+              <Text style={styles.visitedText}>✓ Visité</Text>
+            </View>
+          )}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.infoRow}>
-            <View style={styles.infoChip}>
-              <Ionicons name="location-outline" size={15} color="#E2231A" />
-              <Text style={styles.infoChipText}>{currentRestaurant.address}</Text>
-            </View>
-          </View>
+        {/* Contenu */}
+        <View style={styles.content}>
+          <Text style={styles.categoryLabel}>{CATEGORY_LABEL[restaurant.category]}</Text>
+          <Text style={styles.name}>{restaurant.name}</Text>
+          <Text style={styles.location}>
+            <Ionicons name="location-outline" size={13} color="#9B9B9B" /> {restaurant.address}
+          </Text>
 
-          <Text style={styles.sectionTitle}>À propos</Text>
-          <Text style={styles.description}>{currentRestaurant.description}</Text>
-
-          <Text style={styles.sectionTitle}>Expérience</Text>
-          <View style={styles.factsGrid}>
+          {/* Infos rapides */}
+          <View style={styles.factsRow}>
             <View style={styles.factCard}>
-              <Text style={styles.factLabel}>Catégorie</Text>
-              <Text style={styles.factValue}>{currentRestaurant.category}</Text>
+              <Text style={styles.factLabel}>Prix</Text>
+              <Text style={styles.factValue}>{restaurant.priceRange}</Text>
             </View>
             <View style={styles.factCard}>
               <Text style={styles.factLabel}>Cuisine</Text>
-              <Text style={styles.factValue}>{currentRestaurant.cuisine}</Text>
-            </View>
-            <View style={styles.factCard}>
-              <Text style={styles.factLabel}>Budget</Text>
-              <Text style={styles.factValue}>{currentRestaurant.priceRange}</Text>
+              <Text style={styles.factValue} numberOfLines={2}>{restaurant.cuisine}</Text>
             </View>
             <View style={styles.factCard}>
               <Text style={styles.factLabel}>Récompense</Text>
-              <Text style={styles.factValue}>+100 XP</Text>
+              <Text style={styles.factValue}>+100 XP{'\n'}+ bonus</Text>
             </View>
           </View>
+
+          {/* Description */}
+          <Text style={styles.sectionTitle}>À propos</Text>
+          <Text style={styles.description}>{restaurant.description}</Text>
+
+          {/* Ambiance / features */}
+          {restaurant.features && restaurant.features.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Ambiance & services</Text>
+              <View style={styles.tagsRow}>
+                {restaurant.features.map((f) => (
+                  <View key={f} style={styles.tag}>
+                    <Text style={styles.tagText}>{f}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* Options alimentaires */}
+          {restaurant.dietary && restaurant.dietary.length > 0 && (
+            <>
+              <Text style={styles.sectionTitle}>Options alimentaires</Text>
+              <View style={styles.tagsRow}>
+                {restaurant.dietary.map((d) => (
+                  <View key={d} style={[styles.tag, styles.tagGreen]}>
+                    <Text style={[styles.tagText, styles.tagTextGreen]}>{d}</Text>
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
         </View>
       </ScrollView>
 
-      <View style={styles.bottomBar}>
-        <View>
-          <Text style={styles.bottomLabel}>Michelin Quest</Text>
-          <Text style={styles.bottomValue}>{visited ? 'Déjà visité' : 'Ajoutez cette étape à votre passport'}</Text>
-        </View>
+      {/* Footer sticky check-in */}
+      <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.primaryBtn, visited && styles.primaryBtnDone]}
+          style={[styles.checkinBtn, visited && styles.checkinBtnDone]}
           onPress={handleCheckin}
           disabled={visited}
+          activeOpacity={0.85}
         >
-          <Text style={[styles.primaryBtnText, visited && styles.primaryBtnTextDone]}>
-            {visited ? '✓ Validé' : "J'y étais"}
+          <Text style={[styles.checkinText, visited && styles.checkinTextDone]}>
+            {visited ? "✓ J'y suis allé" : "J'y étais ! +100 XP"}
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* C2 — XP flottant */}
+      {showXPFloat && (
+        <Animated.Text
+          style={[
+            styles.xpFloat,
+            { opacity: fadeAnim, transform: [{ translateY: floatAnim }] },
+          ]}
+        >
+          +100 XP ⭐
+        </Animated.Text>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F6F1E8',
-  },
-  content: {
-    paddingBottom: 120,
-  },
-  hero: {
-    height: 340,
-    position: 'relative',
-    justifyContent: 'flex-end',
-  },
-  heroImage: {
-    ...StyleSheet.absoluteFillObject,
-    width: '100%',
-    height: '100%',
-  },
-  heroOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(17,24,39,0.26)',
-  },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  notFound: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 16 },
+  notFoundText: { fontSize: 16, color: '#9B9B9B' },
+  backLink: { paddingHorizontal: 20, paddingVertical: 10 },
+  backLinkText: { fontSize: 15, color: RED, fontWeight: '600' },
+  imageWrap: { height: 260, position: 'relative', backgroundColor: '#E5E7EB' },
+  image: { width: '100%', height: '100%' },
   backBtn: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 58 : 28,
-    left: 18,
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.92)',
+    top: Platform.OS === 'ios' ? 56 : 32,
+    left: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  heroCard: {
-    margin: 20,
-    backgroundColor: 'rgba(255,255,255,0.94)',
-    borderRadius: 22,
-    padding: 18,
-    gap: 6,
-  },
-  name: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  meta: {
-    fontSize: 14,
-    color: '#4B5563',
-  },
-  section: {
-    padding: 20,
-  },
-  infoRow: {
-    marginBottom: 22,
-  },
-  infoChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-  },
-  infoChipText: {
-    flex: 1,
-    color: '#374151',
-    fontSize: 13,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 10,
-    marginTop: 4,
-  },
-  description: {
-    fontSize: 15,
-    color: '#4B5563',
-    lineHeight: 24,
-    marginBottom: 22,
-  },
-  factsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  factCard: {
-    width: '47%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-  },
-  factLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 6,
-  },
-  factValue: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  bottomBar: {
+  visitedBadge: {
     position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 32,
+    right: 16,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  visitedText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  content: { padding: 20 },
+  categoryLabel: { fontSize: 13, color: '#9B9B9B', fontWeight: '500', marginBottom: 6 },
+  name: { fontSize: 24, fontWeight: '800', color: '#1A1A1A', marginBottom: 6 },
+  location: { fontSize: 13, color: '#9B9B9B', marginBottom: 20 },
+  factsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
+  factCard: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 12,
+    padding: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  factLabel: { fontSize: 11, color: '#9B9B9B', fontWeight: '500', textAlign: 'center' },
+  factValue: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 8, marginTop: 8 },
+  description: { fontSize: 14, color: '#4B5563', lineHeight: 22, marginBottom: 16 },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  tag: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  tagText: { fontSize: 12, color: '#374151', fontWeight: '500' },
+  tagGreen: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' },
+  tagTextGreen: { color: '#065F46' },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.98)',
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 14,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    gap: 12,
-  },
-  bottomLabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  bottomValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#111827',
-    marginTop: 2,
-  },
-  primaryBtn: {
-    backgroundColor: '#E2231A',
-    borderRadius: 14,
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 16,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 16,
+    backgroundColor: '#FFFFFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
-  primaryBtnDone: {
-    backgroundColor: '#ECFDF5',
-  },
-  primaryBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  primaryBtnTextDone: {
-    color: '#059669',
-  },
-  empty: {
-    flex: 1,
-    backgroundColor: '#F6F1E8',
+  checkinBtn: {
+    backgroundColor: RED,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
   },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  backGhostBtn: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-  },
-  backGhostText: {
-    color: '#374151',
-    fontWeight: '700',
+  checkinBtnDone: { backgroundColor: '#ECFDF5' },
+  checkinText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
+  checkinTextDone: { color: '#059669' },
+  // C2 — Animation XP
+  xpFloat: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 116 : 96,
+    alignSelf: 'center',
+    fontSize: 28,
+    fontWeight: '900',
+    color: RED,
+    zIndex: 100,
   },
 });
