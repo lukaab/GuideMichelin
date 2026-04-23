@@ -1,11 +1,10 @@
-import { useRouter, useSegments } from 'expo-router';
-import { Stack } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { AuthProvider, useAuth } from '../lib/auth';
 
-function RootRedirect() {
+function RootContent() {
   const { authUser, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
@@ -22,21 +21,33 @@ function RootRedirect() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1C1C1E' }}>
+      <View style={styles.splash}>
         <ActivityIndicator size="large" color="#E2231A" />
       </View>
     );
   }
 
-  return null;
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }} />
+      <StatusBar style="dark" />
+    </>
+  );
 }
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootRedirect />
-      <Stack screenOptions={{ headerShown: false }} />
-      <StatusBar style="dark" />
+      <RootContent />
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  splash: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1C1C1E',
+  },
+});

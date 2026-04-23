@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(npx create-expo-app@latest michelin-quest --template blank-typescript)",
-      "Bash(npx expo *)"
+      "Bash(npx expo *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d.get\\('main',''\\), d.get\\('version',''\\)\\)\")",
+      "Bash(node -e \"const { getConfig } = require\\('./node_modules/@expo/config'\\); try { getConfig\\('.'\\); console.log\\('OK'\\); } catch\\(e\\) { console.error\\(e.message\\); }\")",
+      "Bash(npx tsc *)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['version']\\)\")",
+      "Bash(pgrep -q \"^7607$\")"
     ]
   }
 }
