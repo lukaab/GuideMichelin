@@ -1,45 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import {
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-
-const FILTERS = [
-  { label: '🌿 Végétalien' },
-  { label: '🌶️ Halal' },
-  { label: '✡️ Casher' },
-  { label: '🌾 Sans gluten' },
-  { label: '⭐ 1 étoile' },
-  { label: '⭐⭐ 2 étoiles' },
-  { label: '⭐⭐⭐ 3 étoiles' },
-  { label: '😊 Bib Gourmand' },
-  { label: '🕯️ Romantique' },
-  { label: '👥 Animé' },
-  { label: '🌿 Calme' },
-  { label: '🌿 Terrasse' },
-  { label: '🍷 Bar à vins' },
-  { label: '♿ Accès PMR' },
-  { label: '🐾 Animaux acceptés' },
-  { label: '👶 Enfants bienvenus' },
-];
+import { Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FILTER_DEFINITIONS, filterStore } from '../lib/domain/filters';
 
 export default function AdvancedFiltersScreen() {
   const router = useRouter();
-  const [selected, setSelected] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>(() => [...filterStore.active]);
 
-  function toggle(label: string) {
-    setSelected((p) => (p.includes(label) ? p.filter((l) => l !== label) : [...p, label]));
+  function toggle(id: string) {
+    setSelected((p) => (p.includes(id) ? p.filter((l) => l !== id) : [...p, id]));
+  }
+
+  function handleApply() {
+    filterStore.active = selected;
+    router.back();
   }
 
   return (
     <View style={styles.container}>
-      {/* Backdrop (tap to dismiss) */}
       <TouchableOpacity style={styles.backdrop} onPress={() => router.back()} activeOpacity={1} />
 
       <View style={styles.sheet}>
@@ -54,13 +33,13 @@ export default function AdvancedFiltersScreen() {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
           <View style={styles.chipGrid}>
-            {FILTERS.map((f) => {
-              const active = selected.includes(f.label);
+            {FILTER_DEFINITIONS.map((f) => {
+              const active = selected.includes(f.id);
               return (
                 <TouchableOpacity
-                  key={f.label}
+                  key={f.id}
                   style={[styles.chip, active && styles.chipActive]}
-                  onPress={() => toggle(f.label)}
+                  onPress={() => toggle(f.id)}
                 >
                   <Text style={[styles.chipText, active && styles.chipTextActive]}>{f.label}</Text>
                 </TouchableOpacity>
@@ -73,8 +52,10 @@ export default function AdvancedFiltersScreen() {
           <TouchableOpacity style={styles.clearBtn} onPress={() => setSelected([])}>
             <Text style={styles.clearText}>Tout effacer</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.applyBtn} onPress={() => router.back()}>
-            <Text style={styles.applyText}>Appliquer</Text>
+          <TouchableOpacity style={styles.applyBtn} onPress={handleApply}>
+            <Text style={styles.applyText}>
+              Appliquer{selected.length > 0 ? ` (${selected.length})` : ''}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -93,36 +74,60 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 36 : 20,
   },
   sheetHandle: {
-    width: 36, height: 4, backgroundColor: '#D1D5DB', borderRadius: 2,
-    alignSelf: 'center', marginTop: 12, marginBottom: 8,
+    width: 36,
+    height: 4,
+    backgroundColor: '#D1D5DB',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
   },
   titleRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 12,
-    borderBottomWidth: 1, borderBottomColor: '#F0F0F0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
   title: { fontSize: 17, fontWeight: '700', color: '#1A1A1A' },
   content: { padding: 20 },
   chipGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   chip: {
-    borderWidth: 1.5, borderColor: '#E0E0E0', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     backgroundColor: '#FFFFFF',
   },
   chipActive: { backgroundColor: '#E2231A', borderColor: '#E2231A' },
   chipText: { fontSize: 14, color: '#1A1A1A' },
   chipTextActive: { color: '#FFFFFF', fontWeight: '600' },
   footer: {
-    flexDirection: 'row', gap: 12, paddingHorizontal: 20, paddingTop: 16,
-    borderTopWidth: 1, borderTopColor: '#F0F0F0',
+    flexDirection: 'row',
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
   },
   clearBtn: {
-    flex: 1, paddingVertical: 13, borderRadius: 12, borderWidth: 1.5, borderColor: '#E0E0E0',
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
     alignItems: 'center',
   },
   clearText: { fontSize: 15, fontWeight: '600', color: '#1A1A1A' },
   applyBtn: {
-    flex: 2, paddingVertical: 13, borderRadius: 12, backgroundColor: '#E2231A', alignItems: 'center',
+    flex: 2,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: '#E2231A',
+    alignItems: 'center',
   },
   applyText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
 });

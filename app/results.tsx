@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Platform,
@@ -13,6 +13,7 @@ import {
 import MapSection from '../components/MapSection';
 import MichelinLogo from '../components/MichelinLogo';
 import RestaurantCardLarge from '../components/RestaurantCardLarge';
+import { applyFilters, filterStore } from '../lib/domain/filters';
 import { getRestaurants } from '../lib/restaurants';
 import { Restaurant } from '../types';
 
@@ -29,7 +30,16 @@ export default function ResultsScreen() {
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showSheet, setShowSheet] = useState(true);
+  const [activeFilters, setActiveFilters] = useState<string[]>(() => [...filterStore.active]);
   const sheetAnim = useRef(new Animated.Value(1)).current;
+
+  useFocusEffect(
+    useCallback(() => {
+      setActiveFilters([...filterStore.active]);
+    }, []),
+  );
+
+  const filtered = applyFilters(all, location ?? '', activeFilters);
 
   function toggleFav(id: number) {
     setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
@@ -37,6 +47,10 @@ export default function ResultsScreen() {
 
   function openRestaurant(restaurant: Restaurant) {
     router.push(`/restaurants/${restaurant.id}`);
+  }
+
+  function openFilters() {
+    router.push('/advanced-filters');
   }
 
   const subtitle = [when, covers ? `${covers} personne${Number(covers) > 1 ? 's' : ''}` : null]
@@ -66,6 +80,8 @@ export default function ResultsScreen() {
     }).start();
   }, [isPreviewOpen, sheetAnim]);
 
+  const filterCount = activeFilters.length;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -82,14 +98,23 @@ export default function ResultsScreen() {
           </Text>
           {subtitle ? <Text style={styles.summarySubtitle}>{subtitle}</Text> : null}
         </View>
-        <TouchableOpacity onPress={() => router.push('/advanced-filters')} hitSlop={8}>
-          <Ionicons name="options-outline" size={22} color="#1A1A1A" />
+        <TouchableOpacity onPress={openFilters} hitSlop={8} style={styles.filterBtn}>
+          <Ionicons
+            name="options-outline"
+            size={22}
+            color={filterCount > 0 ? '#E2231A' : '#1A1A1A'}
+          />
+          {filterCount > 0 && (
+            <View style={styles.filterBadge}>
+              <Text style={styles.filterBadgeText}>{filterCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
       <View style={[styles.mapWrap, isPreviewOpen && styles.mapWrapExpanded]}>
         <MapSection
-          restaurants={all}
+          restaurants={filtered}
           onSelectRestaurant={setSelectedRestaurant}
           onPreviewVisibilityChange={(visible) => {
             setIsPreviewOpen(visible);
@@ -124,9 +149,11 @@ export default function ResultsScreen() {
           >
             <View style={styles.sheetHandle} />
             <Text style={styles.resultsCount}>
-              {selectedRestaurant ? `À la une : ${selectedRestaurant.name}` : `${all.length} Résultats`}
+              {selectedRestaurant
+                ? `À la une : ${selectedRestaurant.name}`
+                : `${filtered.length} Résultat${filtered.length > 1 ? 's' : ''}`}
             </Text>
-            {all.map((restaurant) => (
+            {filtered.map((restaurant) => (
               <RestaurantCardLarge
                 key={restaurant.id}
                 restaurant={restaurant}
@@ -135,6 +162,12 @@ export default function ResultsScreen() {
                 onFavorite={() => toggleFav(restaurant.id)}
               />
             ))}
+            {filtered.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyTitle}>Aucun résultat</Text>
+                <Text style={styles.emptySub}>Essayez d'ajuster vos filtres</Text>
+              </View>
+            )}
           </ScrollView>
         </Animated.View>
       )}
@@ -183,6 +216,25 @@ const styles = StyleSheet.create({
     color: '#9B9B9B',
     marginTop: 2,
   },
+  filterBtn: {
+    position: 'relative',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: '#E2231A',
+    borderRadius: 8,
+    width: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
   mapWrap: {
     height: '38%',
   },
@@ -216,5 +268,19 @@ const styles = StyleSheet.create({
     color: '#1A1A1A',
     textAlign: 'center',
     marginBottom: 16,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+  },
+  emptySub: {
+    fontSize: 14,
+    color: '#9B9B9B',
   },
 });

@@ -13,35 +13,12 @@ import BadgeCard from '../../components/BadgeCard';
 import ProgressBar from '../../components/ProgressBar';
 import rawRestaurants from '../../data/restaurants.json';
 import { useAuth } from '../../lib/auth';
+import { ALL_BADGES, buildChallenges, getLevelTitle } from '../../lib/domain/gamification';
 import { loadProfile, xpProgressInLevel } from '../../lib/profile';
 import { Restaurant, User } from '../../types';
 import { useBreakpoint } from '../../hooks/useBreakpoint';
 
 const RED = '#E2231A';
-
-const ALL_BADGES = [
-  { id: 'first_star', name: 'First Star', icon: '⭐', description: 'Premier restaurant étoilé', check: (u: User) => u.stats.starredVisits >= 1 },
-  { id: 'bib_explorer', name: 'Bib Explorer', icon: '😊', description: '5 Bib Gourmand testés', check: (u: User) => u.stats.bibGourmandVisits >= 5 },
-  { id: 'city_hunter', name: 'City Hunter', icon: '🏙️', description: '3 villes explorées', check: (u: User) => u.stats.citiesExplored.length >= 3 },
-  { id: 'trend_seeker', name: 'Trend Seeker', icon: '🔥', description: '3 restaurants visités', check: (u: User) => u.stats.totalVisits >= 3 },
-  { id: 'gastronome', name: 'Gastronome', icon: '👨‍🍳', description: '10 restaurants visités', check: (u: User) => u.stats.totalVisits >= 10 },
-  { id: 'triple_star', name: 'Triple Star', icon: '🌟', description: '1 restaurant 3 étoiles', check: (u: User) => u.stats.starredVisits >= 1 },
-];
-
-const CHALLENGES = [
-  { id: 'first_visit', title: 'Premier Pas', desc: 'Visitez votre premier restaurant Michelin', target: 1, getValue: (u: User) => u.stats.totalVisits, xp: 200 },
-  { id: 'bib_5', title: 'Bib Explorer', desc: 'Testez 5 Bib Gourmand', target: 5, getValue: (u: User) => u.stats.bibGourmandVisits, xp: 500 },
-  { id: 'three_cities', title: 'City Hunter', desc: '3 villes différentes', target: 3, getValue: (u: User) => u.stats.citiesExplored.length, xp: 400 },
-  { id: 'starred_3', title: 'Star Chaser', desc: 'Visitez 3 restaurants étoilés', target: 3, getValue: (u: User) => u.stats.starredVisits, xp: 600 },
-  { id: 'total_10', title: 'Gastronome', desc: '10 visites au total', target: 10, getValue: (u: User) => u.stats.totalVisits, xp: 1000 },
-];
-
-function getLevelTitle(level: number) {
-  if (level < 3) return 'Curieux Gourmet';
-  if (level < 6) return 'Explorateur Gastronomique';
-  if (level < 10) return "Chasseur d'Étoiles";
-  return 'Grand Maître Michelin';
-}
 
 const CATEGORY_EMOJI: Record<string, string> = {
   'Trois étoiles': '⭐⭐⭐',
@@ -145,28 +122,24 @@ export default function ProfileScreen() {
       {/* ── Challenges ───────────────────────────────────────────────── */}
       <Text style={styles.sectionTitle}>Challenges</Text>
       <View style={styles.challengesList}>
-        {CHALLENGES.map((c) => {
-          const current = Math.min(c.getValue(user), c.target);
-          const done = current >= c.target;
-          return (
-            <View key={c.id} style={[styles.challengeCard, done && styles.challengeDone]}>
-              <View style={styles.challengeHeader}>
-                <Text style={styles.challengeTitle}>{c.title}</Text>
-                <View style={[styles.xpTag, done && styles.xpTagDone]}>
-                  <Text style={[styles.xpTagText, done && styles.xpTagTextDone]}>+{c.xp} XP</Text>
-                </View>
+        {buildChallenges(user).map((c) => (
+          <View key={c.id} style={[styles.challengeCard, c.completed && styles.challengeDone]}>
+            <View style={styles.challengeHeader}>
+              <Text style={styles.challengeTitle}>{c.title}</Text>
+              <View style={[styles.xpTag, c.completed && styles.xpTagDone]}>
+                <Text style={[styles.xpTagText, c.completed && styles.xpTagTextDone]}>+{c.xpReward} XP</Text>
               </View>
-              <Text style={styles.challengeDesc}>{c.desc}</Text>
-              <View style={styles.challengeProgress}>
-                <View style={{ flex: 1 }}>
-                  <ProgressBar progress={current / c.target} color={done ? '#10B981' : RED} height={6} />
-                </View>
-                <Text style={styles.challengeCount}>{current}/{c.target}</Text>
-              </View>
-              {done && <Text style={styles.doneLabel}>✓ Complété</Text>}
             </View>
-          );
-        })}
+            <Text style={styles.challengeDesc}>{c.description}</Text>
+            <View style={styles.challengeProgress}>
+              <View style={{ flex: 1 }}>
+                <ProgressBar progress={c.current / c.target} color={c.completed ? '#10B981' : RED} height={6} />
+              </View>
+              <Text style={styles.challengeCount}>{c.current}/{c.target}</Text>
+            </View>
+            {c.completed && <Text style={styles.doneLabel}>✓ Complété</Text>}
+          </View>
+        ))}
       </View>
 
       {/* ── Food Passport ─────────────────────────────────────────────── */}

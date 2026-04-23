@@ -1,61 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import ProgressBar from '../../components/ProgressBar';
+import { buildChallenges } from '../../lib/domain/gamification';
 import { useAuth } from '../../lib/auth';
 import { loadProfile } from '../../lib/profile';
 import { Challenge, User } from '../../types';
 
 const MICHELIN_RED = '#E2231A';
-
-function buildChallenges(user: User): Challenge[] {
-  return [
-    {
-      id: 'first_visit',
-      title: 'Premier Pas',
-      description: 'Visitez votre premier restaurant Michelin',
-      target: 1,
-      current: Math.min(user.stats.totalVisits, 1),
-      xpReward: 200,
-      completed: user.stats.totalVisits >= 1,
-    },
-    {
-      id: 'bib_5',
-      title: 'Bib Explorer',
-      description: 'Testez 5 Bib Gourmand',
-      target: 5,
-      current: Math.min(user.stats.bibGourmandVisits, 5),
-      xpReward: 500,
-      completed: user.stats.bibGourmandVisits >= 5,
-    },
-    {
-      id: 'three_cities',
-      title: 'City Hunter',
-      description: 'Explorez des restaurants dans 3 villes différentes',
-      target: 3,
-      current: Math.min(user.stats.citiesExplored.length, 3),
-      xpReward: 400,
-      completed: user.stats.citiesExplored.length >= 3,
-    },
-    {
-      id: 'starred_3',
-      title: 'Star Chaser',
-      description: 'Visitez 3 restaurants étoilés',
-      target: 3,
-      current: Math.min(user.stats.starredVisits, 3),
-      xpReward: 600,
-      completed: user.stats.starredVisits >= 3,
-    },
-    {
-      id: 'total_10',
-      title: 'Gastronome Confirmé',
-      description: 'Atteignez 10 visites au total',
-      target: 10,
-      current: Math.min(user.stats.totalVisits, 10),
-      xpReward: 1000,
-      completed: user.stats.totalVisits >= 10,
-    },
-  ];
-}
 
 export default function ChallengesScreen() {
   const { authUser } = useAuth();
