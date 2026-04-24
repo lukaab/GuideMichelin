@@ -1,53 +1,43 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 import { AuthProvider, useAuth } from '../lib/auth';
 
-function RootContent() {
+function RootLayoutNav() {
   const { authUser, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
-    const inAuth = segments[0] === '(auth)';
-    if (!authUser && !inAuth) {
+    const inAuthGroup = segments[0] === '(auth)';
+    if (!authUser && !inAuthGroup) {
       router.replace('/(auth)');
-    } else if (authUser && inAuth) {
+    } else if (authUser && inAuthGroup) {
       router.replace('/(tabs)');
     }
-  }, [authUser, loading, segments]);
+  }, [authUser, loading, segments, router]);
 
-  if (loading) {
-    return (
-      <View style={styles.splash}>
-        <ActivityIndicator size="large" color="#E2231A" />
-      </View>
-    );
-  }
+  if (loading) return <View style={{ flex: 1, backgroundColor: '#FFFFFF' }} />;
 
   return (
-    <>
-      <Stack screenOptions={{ headerShown: false }} />
-      <StatusBar style="dark" />
-    </>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen name="results" />
+      <Stack.Screen
+        name="advanced-filters"
+        options={{ presentation: 'transparentModal', animation: 'fade' }}
+      />
+      <Stack.Screen name="restaurants/[id]" />
+    </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootContent />
+      <RootLayoutNav />
     </AuthProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  splash: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#1C1C1E',
-  },
-});

@@ -9,12 +9,13 @@ interface Props {
 
 export default function BadgeCard({ icon, name, description, unlocked }: Props) {
   return (
-    <View style={[styles.card, !unlocked && styles.locked]}>
+    <View style={[styles.card, !unlocked && styles.cardLocked]}>
       <Text style={[styles.icon, !unlocked && styles.iconLocked]}>{icon}</Text>
       <Text style={[styles.name, !unlocked && styles.textLocked]}>{name}</Text>
       <Text style={[styles.desc, !unlocked && styles.textLocked]} numberOfLines={2}>
-        {unlocked ? description : '???'}
+        {description}
       </Text>
+      {!unlocked && <View style={styles.lockOverlay}><Text style={styles.lockIcon}>🔒</Text></View>}
     </View>
   );
 }
@@ -22,38 +23,23 @@ export default function BadgeCard({ icon, name, description, unlocked }: Props) 
 const styles = StyleSheet.create({
   card: {
     width: 100,
-    backgroundColor: '#FFF7ED',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     borderRadius: 14,
     padding: 12,
-    alignItems: 'center',
+    marginRight: 10,
     borderWidth: 1.5,
-    borderColor: '#FED7AA',
-    marginRight: 12,
+    borderColor: '#FFD700',
   },
-  locked: {
-    backgroundColor: '#F9FAFB',
+  cardLocked: {
     borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
   },
-  icon: {
-    fontSize: 32,
-    marginBottom: 6,
-  },
-  iconLocked: {
-    opacity: 0.3,
-  },
-  name: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#92400E',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  desc: {
-    fontSize: 10,
-    color: '#78350F',
-    textAlign: 'center',
-  },
-  textLocked: {
-    color: '#9CA3AF',
-  },
+  icon: { fontSize: 28, marginBottom: 6 },
+  iconLocked: { opacity: 0.3 },
+  name: { fontSize: 11, fontWeight: '700', color: '#1A1A1A', textAlign: 'center', marginBottom: 4 },
+  desc: { fontSize: 10, color: '#9B9B9B', textAlign: 'center', lineHeight: 13 },
+  textLocked: { color: '#D1D5DB' },
+  lockOverlay: { position: 'absolute', top: 8, right: 8 },
+  lockIcon: { fontSize: 12 },
 });

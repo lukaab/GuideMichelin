@@ -15,9 +15,9 @@ import MichelinLogo from '../../components/MichelinLogo';
 import RestaurantCardLarge from '../../components/RestaurantCardLarge';
 import RestaurantCardSmall from '../../components/RestaurantCardSmall';
 import rawRestaurants from '../../data/restaurants.json';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { useAuth } from '../../lib/auth';
 import { checkIn, loadProfile } from '../../lib/profile';
-import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { CheckInResult, Restaurant, User } from '../../types';
 
 export default function DecouvrirScreen() {
@@ -74,7 +74,7 @@ export default function DecouvrirScreen() {
     );
     setUser(result.user);
     setSelected(null);
-    showToast(`+${result.xpGained} XP - ${restaurant.name} ajoute a votre passport !`);
+    showToast(`+${result.xpGained} XP · ${restaurant.name} ajoute a votre passport !`);
   }
 
   if (isDesktop) {
@@ -338,4 +338,3 @@ const styles = StyleSheet.create({
   },
   toastText: { color: '#FFFFFF', fontWeight: '700', fontSize: 14 },
 });
-

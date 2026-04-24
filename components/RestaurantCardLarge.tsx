@@ -9,6 +9,7 @@ interface Props {
   favorited?: boolean;
   visited?: boolean;
   onCheckin?: () => void;
+  distanceKm?: number;
 }
 
 export default function RestaurantCardLarge({
@@ -18,6 +19,7 @@ export default function RestaurantCardLarge({
   favorited = false,
   visited = false,
   onCheckin,
+  distanceKm,
 }: Props) {
   return (
     <View style={styles.card}>
@@ -41,7 +43,12 @@ export default function RestaurantCardLarge({
         <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
           <StarRow category={restaurant.category} size={14} />
           <Text style={styles.name}>{restaurant.name}</Text>
-          <Text style={styles.meta}>{restaurant.city}, France</Text>
+          <Text style={styles.meta}>
+            {restaurant.city}, France
+            {distanceKm !== undefined
+              ? ` · ${distanceKm < 1 ? '<1 km' : `${Math.round(distanceKm)} km`}`
+              : ''}
+          </Text>
           <Text style={styles.meta}>
             {restaurant.priceRange} · {restaurant.cuisine}
           </Text>

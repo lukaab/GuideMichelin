@@ -11,6 +11,8 @@ export interface Restaurant {
   description: string;
   image: string;
   visited?: boolean;
+  features?: string[];
+  dietary?: string[];
 }
 
 export interface Badge {

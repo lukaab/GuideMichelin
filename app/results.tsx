@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -15,35 +16,41 @@ import MapSection from '../components/MapSection';
 import MichelinLogo from '../components/MichelinLogo';
 import RestaurantCardLarge from '../components/RestaurantCardLarge';
 import { useAuth } from '../lib/auth';
-import { applyFilters, filterStore } from '../lib/domain/filters';
+import { applyFilters, filterStore, haversineKm } from '../lib/domain/filters';
 import { checkIn, loadProfile } from '../lib/profile';
 import { getRestaurants } from '../lib/restaurants';
 import { CheckInResult, Restaurant, User } from '../types';
 
 const all = getRestaurants();
+const FAVS_KEY = '@michelin_favorites';
 
 export default function ResultsScreen() {
   const router = useRouter();
   const { authUser } = useAuth();
-  const { location, when, covers } = useLocalSearchParams<{
+  const { location, when, covers, lat, lng } = useLocalSearchParams<{
     location: string;
     when: string;
     covers: string;
+    lat: string;
+    lng: string;
   }>();
   const [user, setUser] = useState<User | null>(null);
   const [favorites, setFavorites] = useState<number[]>([]);
   const [selectedRestaurant, setSelectedRestaurant] = useState<Restaurant | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [showSheet, setShowSheet] = useState(true);
-  const [activeFilters, setActiveFilters] = useState<string[]>(() => [...filterStore.active]);
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const sheetAnim = useRef(new Animated.Value(1)).current;
+
+  const userCoords = lat && lng ? { lat: Number(lat), lng: Number(lng) } : undefined;
+  const filtered = applyFilters(all, location ?? '', activeFilters, userCoords);
 
   useFocusEffect(
     useCallback(() => {
-      setActiveFilters([...filterStore.active]);
       if (authUser) {
         loadProfile(authUser.id, authUser.username).then(setUser);
       }
+      filterStore.load().then(() => setActiveFilters([...filterStore.active]));
     }, [authUser])
   );
 
@@ -53,10 +60,18 @@ export default function ResultsScreen() {
     }
   }, [authUser]);
 
-  const filtered = applyFilters(all, location ?? '', activeFilters);
+  useEffect(() => {
+    AsyncStorage.getItem(FAVS_KEY).then((raw) => {
+      if (raw) setFavorites(JSON.parse(raw));
+    });
+  }, []);
 
   function toggleFav(id: number) {
-    setFavorites((prev) => (prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]));
+    setFavorites((prev) => {
+      const next = prev.includes(id) ? prev.filter((fav) => fav !== id) : [...prev, id];
+      AsyncStorage.setItem(FAVS_KEY, JSON.stringify(next));
+      return next;
+    });
   }
 
   async function handleCheckin(restaurant: Restaurant) {
@@ -141,7 +156,7 @@ export default function ResultsScreen() {
         </TouchableOpacity>
         <View style={styles.summaryTextWrap}>
           <Text style={styles.summaryTitle} numberOfLines={1}>
-            {location || 'Restaurants à proximité'}
+            {location || 'Restaurants a proximite'}
           </Text>
           {subtitle ? <Text style={styles.summarySubtitle}>{subtitle}</Text> : null}
         </View>
@@ -169,6 +184,7 @@ export default function ResultsScreen() {
               setSelectedRestaurant(null);
             }
           }}
+          userCoords={userCoords}
         />
       </View>
 
@@ -197,23 +213,31 @@ export default function ResultsScreen() {
             <View style={styles.sheetHandle} />
             <Text style={styles.resultsCount}>
               {selectedRestaurant
-                ? `À la une : ${selectedRestaurant.name}`
-                : `${filtered.length} Résultat${filtered.length > 1 ? 's' : ''}`}
+                ? `A la une : ${selectedRestaurant.name}`
+                : `${filtered.length} Resultat${filtered.length > 1 ? 's' : ''}`}
             </Text>
-            {filtered.map((restaurant) => (
-              <RestaurantCardLarge
-                key={restaurant.id}
-                restaurant={restaurant}
-                onPress={() => openRestaurant(restaurant)}
-                favorited={favorites.includes(restaurant.id)}
-                onFavorite={() => toggleFav(restaurant.id)}
-                visited={!!user?.visitedRestaurants.includes(restaurant.id)}
-                onCheckin={user ? () => handleCheckin(restaurant) : undefined}
-              />
-            ))}
+            {filtered.map((restaurant) => {
+              const distanceKm =
+                userCoords && location === 'Près de moi'
+                  ? haversineKm(userCoords.lat, userCoords.lng, restaurant.lat, restaurant.lng)
+                  : undefined;
+
+              return (
+                <RestaurantCardLarge
+                  key={restaurant.id}
+                  restaurant={restaurant}
+                  onPress={() => openRestaurant(restaurant)}
+                  favorited={favorites.includes(restaurant.id)}
+                  onFavorite={() => toggleFav(restaurant.id)}
+                  visited={!!user?.visitedRestaurants.includes(restaurant.id)}
+                  onCheckin={user ? () => handleCheckin(restaurant) : undefined}
+                  distanceKm={distanceKm}
+                />
+              );
+            })}
             {filtered.length === 0 && (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyTitle}>Aucun résultat</Text>
+                <Text style={styles.emptyTitle}>Aucun resultat</Text>
                 <Text style={styles.emptySub}>Essayez de modifier vos filtres</Text>
               </View>
             )}
