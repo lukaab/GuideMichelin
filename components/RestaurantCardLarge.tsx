@@ -22,39 +22,49 @@ export default function RestaurantCardLarge({
   distanceKm,
 }: Props) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.9}>
-      <View style={styles.imageWrap}>
-        <Image source={{ uri: restaurant.image }} style={styles.image} />
-        <TouchableOpacity style={styles.heartBtn} onPress={onFavorite} hitSlop={8}>
-          <Text style={[styles.heart, favorited && styles.heartActive]}>
-            {favorited ? '♥' : '♡'}
+    <View style={styles.card}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.9}>
+        <View style={styles.imageWrap}>
+          <Image source={{ uri: restaurant.image }} style={styles.image} />
+          <TouchableOpacity style={styles.heartBtn} onPress={onFavorite} hitSlop={8}>
+            <Text style={[styles.heart, favorited && styles.heartActive]}>
+              {favorited ? '♥' : '♡'}
+            </Text>
+          </TouchableOpacity>
+          {visited && (
+            <View style={styles.visitedBadge}>
+              <Text style={styles.visitedText}>✓ Visite</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+
+      <View style={styles.body}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+          <StarRow category={restaurant.category} size={14} />
+          <Text style={styles.name}>{restaurant.name}</Text>
+          <Text style={styles.meta}>
+            {restaurant.city}, France
+            {distanceKm !== undefined
+              ? ` · ${distanceKm < 1 ? '<1 km' : `${Math.round(distanceKm)} km`}`
+              : ''}
+          </Text>
+          <Text style={styles.meta}>
+            {restaurant.priceRange} · {restaurant.cuisine}
           </Text>
         </TouchableOpacity>
-        {visited && (
-          <View style={styles.visitedBadge}>
-            <Text style={styles.visitedText}>✓ Visité</Text>
-          </View>
-        )}
-      </View>
-      <View style={styles.body}>
-        <StarRow category={restaurant.category} size={14} />
-        <Text style={styles.name}>{restaurant.name}</Text>
-        <Text style={styles.meta}>
-          {restaurant.city}, France
-          {distanceKm !== undefined ? `  ·  ${distanceKm < 1 ? '<1 km' : `${Math.round(distanceKm)} km`}` : ''}
-        </Text>
-        <Text style={styles.meta}>{restaurant.priceRange} · {restaurant.cuisine}</Text>
+
         <TouchableOpacity
           style={[styles.checkinBtn, visited && styles.checkinBtnDone]}
           onPress={onCheckin}
-          disabled={visited}
+          disabled={visited || !onCheckin}
         >
           <Text style={[styles.checkinText, visited && styles.checkinTextDone]}>
-            {visited ? '✓ J\'y suis allé' : 'J\'y étais ! +100 XP'}
+            {visited ? "✓ J'y suis alle" : "J'y etais !"}
           </Text>
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 

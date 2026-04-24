@@ -3,8 +3,8 @@ import { Challenge, User } from '../../types';
 export function getLevelTitle(level: number): string {
   if (level < 3) return 'Curieux Gourmet';
   if (level < 6) return 'Explorateur Gastronomique';
-  if (level < 10) return "Chasseur d'Étoiles";
-  return 'Grand Maître Michelin';
+  if (level < 10) return "Chasseur d'Etoiles";
+  return 'Grand Maitre Michelin';
 }
 
 export const ALL_BADGES = [
@@ -12,42 +12,42 @@ export const ALL_BADGES = [
     id: 'first_star',
     name: 'First Star',
     icon: '⭐',
-    description: 'Premier restaurant étoilé',
+    description: 'Premier restaurant etoile',
     check: (u: User) => u.stats.starredVisits >= 1,
   },
   {
     id: 'bib_explorer',
     name: 'Bib Explorer',
     icon: '😊',
-    description: '5 Bib Gourmand testés',
+    description: '5 Bib Gourmand testes',
     check: (u: User) => u.stats.bibGourmandVisits >= 5,
   },
   {
     id: 'city_hunter',
     name: 'City Hunter',
     icon: '🏙️',
-    description: '3 villes explorées',
+    description: '3 villes explorees',
     check: (u: User) => u.stats.citiesExplored.length >= 3,
   },
   {
     id: 'trend_seeker',
     name: 'Trend Seeker',
     icon: '🔥',
-    description: '3 restaurants visités',
+    description: '3 restaurants visites',
     check: (u: User) => u.stats.totalVisits >= 3,
   },
   {
     id: 'gastronome',
     name: 'Gastronome',
     icon: '👨‍🍳',
-    description: '10 restaurants visités',
+    description: '10 restaurants visites',
     check: (u: User) => u.stats.totalVisits >= 10,
   },
   {
     id: 'triple_star',
     name: 'Triple Star',
     icon: '🌟',
-    description: '3 restaurants étoilés visités',
+    description: '3 restaurants etoiles visites',
     check: (u: User) => u.stats.starredVisits >= 3,
   },
 ];
@@ -75,7 +75,7 @@ export function buildChallenges(user: User): Challenge[] {
     {
       id: 'three_cities',
       title: 'City Hunter',
-      description: 'Explorez des restaurants dans 3 villes différentes',
+      description: 'Explorez des restaurants dans 3 villes differentes',
       target: 3,
       current: Math.min(user.stats.citiesExplored.length, 3),
       xpReward: 400,
@@ -84,7 +84,7 @@ export function buildChallenges(user: User): Challenge[] {
     {
       id: 'starred_3',
       title: 'Star Chaser',
-      description: 'Visitez 3 restaurants étoilés',
+      description: 'Visitez 3 restaurants etoiles',
       target: 3,
       current: Math.min(user.stats.starredVisits, 3),
       xpReward: 600,
@@ -92,7 +92,7 @@ export function buildChallenges(user: User): Challenge[] {
     },
     {
       id: 'total_10',
-      title: 'Gastronome Confirmé',
+      title: 'Gastronome Confirme',
       description: 'Atteignez 10 visites au total',
       target: 10,
       current: Math.min(user.stats.totalVisits, 10),

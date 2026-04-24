@@ -1,5 +1,6 @@
+import { useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   Platform,
@@ -36,6 +37,14 @@ export default function ProfileScreen() {
     if (authUser) loadProfile(authUser.id, authUser.username).then(setUser);
   }, [authUser]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (authUser) {
+        loadProfile(authUser.id, authUser.username).then(setUser);
+      }
+    }, [authUser])
+  );
+
   function handleSignOut() {
     Alert.alert('Déconnexion', 'Votre progression est sauvegardée. À bientôt !', [
       { text: 'Annuler', style: 'cancel' },
@@ -48,7 +57,7 @@ export default function ProfileScreen() {
   const xpProgress = xpProgressInLevel(user.xp);
   const xpInLevel = user.xp % 500;
   const visited = (rawRestaurants as Restaurant[]).filter((r) =>
-    user.visitedRestaurants.includes(r.id),
+    user.visitedRestaurants.includes(r.id)
   );
 
   return (
@@ -57,7 +66,6 @@ export default function ProfileScreen() {
       contentContainerStyle={[styles.content, isDesktop && styles.contentDesktop]}
       showsVerticalScrollIndicator={false}
     >
-      {/* ── Header ────────────────────────────────────────────────────── */}
       <View style={styles.pageHeader}>
         <Text style={styles.pageTitle}>Profil</Text>
         <TouchableOpacity onPress={handleSignOut} style={styles.signOutIcon}>
@@ -65,7 +73,6 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* ── Hero ─────────────────────────────────────────────────────── */}
       <View style={styles.heroCard}>
         <View style={styles.avatarWrap}>
           <Text style={styles.avatarEmoji}>🍽️</Text>
@@ -79,17 +86,18 @@ export default function ProfileScreen() {
         <View style={styles.xpBarWrap}>
           <View style={styles.xpBarRow}>
             <Text style={styles.xpLabel}>⭐ {user.xp} XP</Text>
-            <Text style={styles.xpNext}>{500 - xpInLevel} XP → niv. {user.level + 1}</Text>
+            <Text style={styles.xpNext}>
+              {500 - xpInLevel} XP → niv. {user.level + 1}
+            </Text>
           </View>
           <ProgressBar progress={xpProgress} color={RED} height={8} />
         </View>
       </View>
 
-      {/* ── Stats ────────────────────────────────────────────────────── */}
       <View style={styles.statsRow}>
         {[
           { label: 'Visites', value: user.stats.totalVisits },
-          { label: 'Étoilés', value: user.stats.starredVisits },
+          { label: 'Etoiles', value: user.stats.starredVisits },
           { label: 'Bib Gourmand', value: user.stats.bibGourmandVisits },
           { label: 'Villes', value: user.stats.citiesExplored.length },
         ].map((s) => (
@@ -100,7 +108,6 @@ export default function ProfileScreen() {
         ))}
       </View>
 
-      {/* ── Badges ───────────────────────────────────────────────────── */}
       <Text style={styles.sectionTitle}>Mes Badges</Text>
       <ScrollView
         horizontal
@@ -119,7 +126,6 @@ export default function ProfileScreen() {
         ))}
       </ScrollView>
 
-      {/* ── Challenges ───────────────────────────────────────────────── */}
       <Text style={styles.sectionTitle}>Challenges</Text>
       <View style={styles.challengesList}>
         {buildChallenges(user).map((c) => (
@@ -127,22 +133,29 @@ export default function ProfileScreen() {
             <View style={styles.challengeHeader}>
               <Text style={styles.challengeTitle}>{c.title}</Text>
               <View style={[styles.xpTag, c.completed && styles.xpTagDone]}>
-                <Text style={[styles.xpTagText, c.completed && styles.xpTagTextDone]}>+{c.xpReward} XP</Text>
+                <Text style={[styles.xpTagText, c.completed && styles.xpTagTextDone]}>
+                  +{c.xpReward} XP
+                </Text>
               </View>
             </View>
             <Text style={styles.challengeDesc}>{c.description}</Text>
             <View style={styles.challengeProgress}>
               <View style={{ flex: 1 }}>
-                <ProgressBar progress={c.current / c.target} color={c.completed ? '#10B981' : RED} height={6} />
+                <ProgressBar
+                  progress={c.current / c.target}
+                  color={c.completed ? '#10B981' : RED}
+                  height={6}
+                />
               </View>
-              <Text style={styles.challengeCount}>{c.current}/{c.target}</Text>
+              <Text style={styles.challengeCount}>
+                {c.current}/{c.target}
+              </Text>
             </View>
             {c.completed && <Text style={styles.doneLabel}>✓ Complété</Text>}
           </View>
         ))}
       </View>
 
-      {/* ── Food Passport ─────────────────────────────────────────────── */}
       <Text style={styles.sectionTitle}>Food Passport</Text>
       <View style={styles.passportCard}>
         <Text style={styles.passportTitle}>MICHELIN QUEST</Text>
@@ -155,19 +168,24 @@ export default function ProfileScreen() {
           height={6}
         />
         <Text style={styles.passportCount}>
-          {user.stats.totalVisits} / {(rawRestaurants as Restaurant[]).length} restaurants visités
+          {user.stats.totalVisits} / {(rawRestaurants as Restaurant[]).length} restaurants visites
         </Text>
       </View>
 
       {visited.length > 0 && (
         <>
-          <Text style={styles.subSectionTitle}>{visited.length} restaurant{visited.length > 1 ? 's' : ''} visité{visited.length > 1 ? 's' : ''}</Text>
+          <Text style={styles.subSectionTitle}>
+            {visited.length} restaurant{visited.length > 1 ? 's' : ''} visite
+            {visited.length > 1 ? 's' : ''}
+          </Text>
           {visited.map((r) => (
             <View key={r.id} style={styles.visitedRow}>
               <Text style={styles.visitedEmoji}>{CATEGORY_EMOJI[r.category]}</Text>
               <View style={styles.visitedInfo}>
                 <Text style={styles.visitedName}>{r.name}</Text>
-                <Text style={styles.visitedMeta}>{r.city} · {r.priceRange}</Text>
+                <Text style={styles.visitedMeta}>
+                  {r.city} · {r.priceRange}
+                </Text>
               </View>
               <Ionicons name="checkmark-circle" size={20} color="#10B981" />
             </View>
@@ -215,7 +233,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Hero
   heroCard: {
     backgroundColor: '#1A1A1A',
     marginHorizontal: 20,
@@ -278,7 +295,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.5)',
   },
-  // Stats
   statsRow: {
     flexDirection: 'row',
     marginHorizontal: 20,
@@ -302,7 +318,6 @@ const styles = StyleSheet.create({
     color: '#9B9B9B',
     textAlign: 'center',
   },
-  // Section titles
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -318,12 +333,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginTop: 4,
   },
-  // Badges
   badgesScroll: {
     paddingLeft: 20,
     marginBottom: 24,
   },
-  // Challenges
   challengesList: {
     paddingHorizontal: 20,
     gap: 10,
@@ -391,7 +404,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 6,
   },
-  // Passport
   passportCard: {
     backgroundColor: '#1A1A1A',
     marginHorizontal: 20,
@@ -432,7 +444,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.5)',
     marginTop: 8,
   },
-  // Visited restaurants
   visitedRow: {
     flexDirection: 'row',
     alignItems: 'center',

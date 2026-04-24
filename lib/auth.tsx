@@ -18,7 +18,7 @@ const SESSION_KEY = '@michelin_session';
 async function localSignUp(
   email: string,
   password: string,
-  username: string,
+  username: string
 ): Promise<{ id: string } | string> {
   const raw = await AsyncStorage.getItem(ACCOUNTS_KEY);
   const accounts: LocalAccount[] = raw ? JSON.parse(raw) : [];
@@ -30,12 +30,18 @@ async function localSignUp(
   return { id };
 }
 
-async function localSignIn(email: string, password: string): Promise<{ id: string; username: string } | string> {
+async function localSignIn(
+  email: string,
+  password: string
+): Promise<{ id: string; username: string } | string> {
   const raw = await AsyncStorage.getItem(ACCOUNTS_KEY);
   const accounts: LocalAccount[] = raw ? JSON.parse(raw) : [];
   const account = accounts.find((a) => a.email === email && a.password === password);
   if (!account) return 'Email ou mot de passe incorrect';
-  await AsyncStorage.setItem(SESSION_KEY, JSON.stringify({ id: account.id, email, username: account.username }));
+  await AsyncStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify({ id: account.id, email, username: account.username })
+  );
   return { id: account.id, username: account.username };
 }
 
@@ -82,7 +88,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         setLoading(false);
       });
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange((_event, session) => {
         setSupabaseSession(session);
         if (session?.user) {
           setAuthUser({ id: session.user.id, email: session.user.email ?? '', username: '' });
@@ -123,7 +131,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         level: 1,
         visited_restaurants: [],
         badges: [],
-        stats: { totalVisits: 0, bibGourmandVisits: 0, starredVisits: 0, citiesExplored: [], totalXP: 0 },
+        stats: {
+          totalVisits: 0,
+          bibGourmandVisits: 0,
+          starredVisits: 0,
+          citiesExplored: [],
+          totalXP: 0,
+        },
       });
       return null;
     }

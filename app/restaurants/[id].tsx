@@ -30,7 +30,6 @@ export default function RestaurantDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { authUser } = useAuth();
-
   const [user, setUser] = useState<User | null>(null);
   const [showXPFloat, setShowXPFloat] = useState(false);
   const floatAnim = useRef(new Animated.Value(0)).current;
@@ -47,7 +46,7 @@ export default function RestaurantDetailScreen() {
       <View style={styles.notFound}>
         <Text style={styles.notFoundText}>Restaurant introuvable</Text>
         <TouchableOpacity onPress={() => router.back()} style={styles.backLink}>
-          <Text style={styles.backLinkText}>← Retour</Text>
+          <Text style={styles.backLinkText}>Retour</Text>
         </TouchableOpacity>
       </View>
     );
@@ -55,7 +54,6 @@ export default function RestaurantDetailScreen() {
 
   const visited = user?.visitedRestaurants.includes(restaurant.id) ?? false;
 
-  // C2 — Animation "+100 XP" flottante
   function triggerXPFloat() {
     setShowXPFloat(true);
     floatAnim.setValue(0);
@@ -71,31 +69,41 @@ export default function RestaurantDetailScreen() {
 
   async function handleCheckin() {
     if (!user || visited || !restaurant) return;
+
     triggerXPFloat();
+
     const result: CheckInResult = await checkIn(
       user,
       restaurant.id,
       restaurant.category,
-      restaurant.city,
+      restaurant.city
     );
     setUser(result.user);
 
-    const lines: string[] = [`+${result.xpGained} XP gagnés !`];
+    const lines: string[] = [`+${result.xpGained} XP gagnes !`];
+
     if (result.completedChallenges.length > 0) {
-      const s = result.completedChallenges.length > 1 ? 's' : '';
-      lines.push(`🎯 Challenge${s} complété${s} !`);
+      lines.push(
+        `Challenge${result.completedChallenges.length > 1 ? 's' : ''} complete${
+          result.completedChallenges.length > 1 ? 's' : ''
+        } !`
+      );
     }
+
     if (result.unlockedBadges.length > 0) {
-      const s = result.unlockedBadges.length > 1 ? 's' : '';
-      lines.push(`🏅 Badge${s} débloqué${s} !`);
+      lines.push(
+        `Badge${result.unlockedBadges.length > 1 ? 's' : ''} debloque${
+          result.unlockedBadges.length > 1 ? 's' : ''
+        } !`
+      );
     }
-    Alert.alert('Étape validée ✓', lines.join('\n'));
+
+    Alert.alert('Etape validee', lines.join('\n'));
   }
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 110 }}>
-        {/* Image hero */}
         <View style={styles.imageWrap}>
           <Image source={{ uri: restaurant.image }} style={styles.image} />
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
@@ -103,12 +111,11 @@ export default function RestaurantDetailScreen() {
           </TouchableOpacity>
           {visited && (
             <View style={styles.visitedBadge}>
-              <Text style={styles.visitedText}>✓ Visité</Text>
+              <Text style={styles.visitedText}>✓ Visite</Text>
             </View>
           )}
         </View>
 
-        {/* Contenu */}
         <View style={styles.content}>
           <Text style={styles.categoryLabel}>{CATEGORY_LABEL[restaurant.category]}</Text>
           <Text style={styles.name}>{restaurant.name}</Text>
@@ -116,7 +123,6 @@ export default function RestaurantDetailScreen() {
             <Ionicons name="location-outline" size={13} color="#9B9B9B" /> {restaurant.address}
           </Text>
 
-          {/* Infos rapides */}
           <View style={styles.factsRow}>
             <View style={styles.factCard}>
               <Text style={styles.factLabel}>Prix</Text>
@@ -124,40 +130,42 @@ export default function RestaurantDetailScreen() {
             </View>
             <View style={styles.factCard}>
               <Text style={styles.factLabel}>Cuisine</Text>
-              <Text style={styles.factValue} numberOfLines={2}>{restaurant.cuisine}</Text>
+              <Text style={styles.factValue} numberOfLines={2}>
+                {restaurant.cuisine}
+              </Text>
             </View>
             <View style={styles.factCard}>
-              <Text style={styles.factLabel}>Récompense</Text>
-              <Text style={styles.factValue}>+100 XP{'\n'}+ bonus</Text>
+              <Text style={styles.factLabel}>Recompense</Text>
+              <Text style={styles.factValue}>
+                +100 XP
+                {'\n'}+ bonus challenges
+              </Text>
             </View>
           </View>
 
-          {/* Description */}
-          <Text style={styles.sectionTitle}>À propos</Text>
+          <Text style={styles.sectionTitle}>A propos</Text>
           <Text style={styles.description}>{restaurant.description}</Text>
 
-          {/* Ambiance / features */}
           {restaurant.features && restaurant.features.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Ambiance & services</Text>
               <View style={styles.tagsRow}>
-                {restaurant.features.map((f) => (
-                  <View key={f} style={styles.tag}>
-                    <Text style={styles.tagText}>{f}</Text>
+                {restaurant.features.map((feature) => (
+                  <View key={feature} style={styles.tag}>
+                    <Text style={styles.tagText}>{feature}</Text>
                   </View>
                 ))}
               </View>
             </>
           )}
 
-          {/* Options alimentaires */}
           {restaurant.dietary && restaurant.dietary.length > 0 && (
             <>
               <Text style={styles.sectionTitle}>Options alimentaires</Text>
               <View style={styles.tagsRow}>
-                {restaurant.dietary.map((d) => (
-                  <View key={d} style={[styles.tag, styles.tagGreen]}>
-                    <Text style={[styles.tagText, styles.tagTextGreen]}>{d}</Text>
+                {restaurant.dietary.map((dietary) => (
+                  <View key={dietary} style={[styles.tag, styles.tagGreen]}>
+                    <Text style={[styles.tagText, styles.tagTextGreen]}>{dietary}</Text>
                   </View>
                 ))}
               </View>
@@ -166,7 +174,6 @@ export default function RestaurantDetailScreen() {
         </View>
       </ScrollView>
 
-      {/* Footer sticky check-in */}
       <View style={styles.footer}>
         <TouchableOpacity
           style={[styles.checkinBtn, visited && styles.checkinBtnDone]}
@@ -175,12 +182,11 @@ export default function RestaurantDetailScreen() {
           activeOpacity={0.85}
         >
           <Text style={[styles.checkinText, visited && styles.checkinTextDone]}>
-            {visited ? "✓ J'y suis allé" : "J'y étais ! +100 XP"}
+            {visited ? "✓ J'y suis alle" : "J'y etais ! +100 XP"}
           </Text>
         </TouchableOpacity>
       </View>
 
-      {/* C2 — XP flottant */}
       {showXPFloat && (
         <Animated.Text
           style={[
@@ -188,7 +194,7 @@ export default function RestaurantDetailScreen() {
             { opacity: fadeAnim, transform: [{ translateY: floatAnim }] },
           ]}
         >
-          +100 XP ⭐
+          +100 XP
         </Animated.Text>
       )}
     </View>
@@ -243,7 +249,13 @@ const styles = StyleSheet.create({
   },
   factLabel: { fontSize: 11, color: '#9B9B9B', fontWeight: '500', textAlign: 'center' },
   factValue: { fontSize: 14, fontWeight: '700', color: '#1A1A1A', textAlign: 'center' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1A1A1A', marginBottom: 8, marginTop: 8 },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 8,
+    marginTop: 8,
+  },
   description: { fontSize: 14, color: '#4B5563', lineHeight: 22, marginBottom: 16 },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   tag: {
@@ -278,7 +290,6 @@ const styles = StyleSheet.create({
   checkinBtnDone: { backgroundColor: '#ECFDF5' },
   checkinText: { color: '#FFFFFF', fontWeight: '700', fontSize: 16 },
   checkinTextDone: { color: '#059669' },
-  // C2 — Animation XP
   xpFloat: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 116 : 96,

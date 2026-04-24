@@ -5,15 +5,31 @@ import { CheckInResult, User, UserStats } from '../types';
 
 const PROFILE_PREFIX = '@michelin_profile_';
 
-function xpToLevel(xp: number): number {
-  return Math.floor(xp / 500) + 1;
-}
+const DEFAULT_STATS: UserStats = {
+  totalVisits: 0,
+  bibGourmandVisits: 0,
+  starredVisits: 0,
+  citiesExplored: [],
+  totalXP: 0,
+};
 
-export function xpProgressInLevel(xp: number): number {
-  return (xp % 500) / 500;
-}
+const CHALLENGE_REWARDS: Array<{
+  id: string;
+  xp: number;
+  crossed: (prev: UserStats, next: UserStats) => boolean;
+}> = [
+  { id: 'first_visit', xp: 200, crossed: (p, n) => p.totalVisits < 1 && n.totalVisits >= 1 },
+  { id: 'bib_5', xp: 500, crossed: (p, n) => p.bibGourmandVisits < 5 && n.bibGourmandVisits >= 5 },
+  {
+    id: 'three_cities',
+    xp: 400,
+    crossed: (p, n) => p.citiesExplored.length < 3 && n.citiesExplored.length >= 3,
+  },
+  { id: 'starred_3', xp: 600, crossed: (p, n) => p.starredVisits < 3 && n.starredVisits >= 3 },
+  { id: 'total_10', xp: 1000, crossed: (p, n) => p.totalVisits < 10 && n.totalVisits >= 10 },
+];
 
-function defaultUser(id: string, username: string): User {
+function defaultUser(id: string, username = 'Explorer'): User {
   return {
     id,
     username,
@@ -21,42 +37,49 @@ function defaultUser(id: string, username: string): User {
     level: 1,
     badges: [],
     visitedRestaurants: [],
-    stats: {
-      totalVisits: 0,
-      bibGourmandVisits: 0,
-      starredVisits: 0,
-      citiesExplored: [],
-      totalXP: 0,
-    },
+    stats: DEFAULT_STATS,
   };
 }
 
-export async function loadProfile(userId: string, username = ''): Promise<User> {
+export function xpToLevel(xp: number): number {
+  return Math.floor(xp / 500) + 1;
+}
+
+export function xpProgressInLevel(xp: number): number {
+  return (xp % 500) / 500;
+}
+
+function rowToUser(row: Record<string, unknown>, fallbackUsername = 'Explorer'): User {
+  return {
+    id: row.id as string,
+    username: (row.username as string) ?? fallbackUsername,
+    xp: (row.xp as number) ?? 0,
+    level: (row.level as number) ?? 1,
+    badges: (row.badges as string[]) ?? [],
+    visitedRestaurants: (row.visited_restaurants as number[]) ?? [],
+    stats: (row.stats as UserStats) ?? DEFAULT_STATS,
+  };
+}
+
+export async function loadProfile(userId: string, username = 'Explorer'): Promise<User> {
   if (supabaseConfigured) {
     const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
     if (data) {
-      return {
-        id: userId,
-        username: data.username ?? username,
-        xp: data.xp ?? 0,
-        level: data.level ?? 1,
-        badges: data.badges ?? [],
-        visitedRestaurants: data.visited_restaurants ?? [],
-        stats: data.stats ?? {
-          totalVisits: 0,
-          bibGourmandVisits: 0,
-          starredVisits: 0,
-          citiesExplored: [],
-          totalXP: 0,
-        },
-      };
+      const user = rowToUser(data, username);
+      await AsyncStorage.setItem(PROFILE_PREFIX + userId, JSON.stringify(user));
+      return user;
     }
   }
-  const key = PROFILE_PREFIX + userId;
-  const raw = await AsyncStorage.getItem(key);
-  if (raw) return JSON.parse(raw);
+
+  try {
+    const raw = await AsyncStorage.getItem(PROFILE_PREFIX + userId);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // Ignore corrupted local cache and rebuild from defaults.
+  }
+
   const user = defaultUser(userId, username);
-  await AsyncStorage.setItem(key, JSON.stringify(user));
+  await AsyncStorage.setItem(PROFILE_PREFIX + userId, JSON.stringify(user));
   return user;
 }
 
@@ -73,27 +96,15 @@ export async function saveProfile(user: User): Promise<void> {
       updated_at: new Date().toISOString(),
     });
   }
-  const key = PROFILE_PREFIX + user.id;
-  await AsyncStorage.setItem(key, JSON.stringify(user));
-}
 
-const CHALLENGE_REWARDS: Array<{
-  id: string;
-  xp: number;
-  crossed: (prev: UserStats, next: UserStats) => boolean;
-}> = [
-  { id: 'first_visit', xp: 200, crossed: (p, n) => p.totalVisits < 1 && n.totalVisits >= 1 },
-  { id: 'bib_5', xp: 500, crossed: (p, n) => p.bibGourmandVisits < 5 && n.bibGourmandVisits >= 5 },
-  { id: 'three_cities', xp: 400, crossed: (p, n) => p.citiesExplored.length < 3 && n.citiesExplored.length >= 3 },
-  { id: 'starred_3', xp: 600, crossed: (p, n) => p.starredVisits < 3 && n.starredVisits >= 3 },
-  { id: 'total_10', xp: 1000, crossed: (p, n) => p.totalVisits < 10 && n.totalVisits >= 10 },
-];
+  await AsyncStorage.setItem(PROFILE_PREFIX + user.id, JSON.stringify(user));
+}
 
 export async function checkIn(
   user: User,
   restaurantId: number,
   category: string,
-  city: string,
+  city: string
 ): Promise<CheckInResult> {
   if (user.visitedRestaurants.includes(restaurantId)) {
     return { user, xpGained: 0, completedChallenges: [], unlockedBadges: [] };
@@ -115,20 +126,27 @@ export async function checkIn(
     totalXP: user.stats.totalXP + baseXP,
   };
 
-  const completedChallenges = CHALLENGE_REWARDS.filter((r) => r.crossed(user.stats, newStats)).map(
-    (r) => r.id,
+  const completedChallenges = CHALLENGE_REWARDS.filter((reward) =>
+    reward.crossed(user.stats, newStats)
+  ).map((reward) => reward.id);
+
+  const bonusXP = CHALLENGE_REWARDS.filter((reward) => reward.crossed(user.stats, newStats)).reduce(
+    (sum, reward) => sum + reward.xp,
+    0
   );
-  const bonusXP = CHALLENGE_REWARDS.filter((r) => r.crossed(user.stats, newStats)).reduce(
-    (sum, r) => sum + r.xp,
-    0,
-  );
+
   const totalXPGained = baseXP + bonusXP;
   const newXP = user.xp + totalXPGained;
 
-  const userWithNewStats = { ...user, stats: newStats, xp: newXP };
+  const userWithNewStats: User = {
+    ...user,
+    xp: newXP,
+    stats: newStats,
+  };
+
   const unlockedBadges = ALL_BADGES.filter(
-    (b) => !user.badges.includes(b.id) && b.check(userWithNewStats),
-  ).map((b) => b.id);
+    (badge) => !user.badges.includes(badge.id) && badge.check(userWithNewStats)
+  ).map((badge) => badge.id);
 
   const updated: User = {
     ...user,
@@ -136,9 +154,17 @@ export async function checkIn(
     level: xpToLevel(newXP),
     badges: [...user.badges, ...unlockedBadges],
     visitedRestaurants: [...user.visitedRestaurants, restaurantId],
-    stats: { ...newStats, totalXP: newStats.totalXP + bonusXP },
+    stats: {
+      ...newStats,
+      totalXP: newStats.totalXP + bonusXP,
+    },
   };
 
   await saveProfile(updated);
-  return { user: updated, xpGained: totalXPGained, completedChallenges, unlockedBadges };
+  return {
+    user: updated,
+    xpGained: totalXPGained,
+    completedChallenges,
+    unlockedBadges,
+  };
 }
